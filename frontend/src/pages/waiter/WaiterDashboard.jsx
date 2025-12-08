@@ -58,9 +58,15 @@ export const WaiterDashboard = () => {
 
   useEffect(() => {
     if (activeTab === 'orders') {
-      fetchOrders()
+      fetchOrders() // Fetch fresh orders when switching to orders tab
+      // Auto-refresh orders every 30 seconds
+      const orderInterval = setInterval(fetchOrders, 30000)
+      return () => clearInterval(orderInterval)
     } else if (activeTab === 'bookings') {
-      fetchBookings()
+      fetchBookings() // Fetch fresh bookings when switching to bookings tab
+      // Auto-refresh bookings every 30 seconds
+      const bookingInterval = setInterval(fetchBookings, 30000)
+      return () => clearInterval(bookingInterval)
     }
   }, [activeTab])
 
@@ -187,7 +193,7 @@ export const WaiterDashboard = () => {
       
       const token = authService.getAdminToken()
       
-      const response = await fetch('http://localhost:8081/api/orders', {
+      const response = await fetch('http://localhost:8081/api/orders?size=100&page=0', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -246,7 +252,7 @@ export const WaiterDashboard = () => {
       console.error('Failed to fetch waiter orders:', error)
       // Fallback to service
       try {
-        const response = await orderService.getWaiterOrders()
+        const response = await orderService.getAllOrders({ size: 100, page: 0 })
         setOrders(response.content || response || [])
       } catch (serviceError) {
         toast.error('Failed to fetch orders')
@@ -256,126 +262,67 @@ export const WaiterDashboard = () => {
 
   const fetchBookings = async () => {
     try {
-      console.log('Fetching bookings from bookings API...')
-      console.log('Current cancelled bookings from localStorage:', cancelledBookings)
-      console.log('Current completed bookings from localStorage:', completedBookings)
+      console.log('Fetching bookings using bookingService...')
       
-      const token = authService.getAdminToken()
-      let bookingsData = []
+      // Use bookingService.getAllBookings() like customer dashboard
+      const bookingsData = await bookingService.getAllBookings()
+      console.log('Bookings fetched from bookingService:', bookingsData)
       
-      // Try to get booking data from the proper bookings API
+      // Filter out cancelled and completed bookings
+      const filteredBookings = bookingsData.filter(booking => {
+        const isCancelled = cancelledBookings.includes(booking.id)
+        const isCompleted = completedBookings.includes(booking.id)
+        return !isCancelled && !isCompleted
+      })
+      
+      console.log('Bookings after filtering:', filteredBookings.length)
+      setBookings(filteredBookings)
+      
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error)
+      console.log('Falling back to orders API for booking data...')
+      
+      // Fallback to orders API if bookingService fails
       try {
-        const bookingsResponse = await fetch('http://localhost:8081/api/bookings/all', {
+        const token = authService.getAdminToken()
+        const ordersResponse = await fetch('http://localhost:8081/api/orders', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         })
         
-        console.log('Bookings API response status:', bookingsResponse.status)
-        console.log('Bookings API response ok:', bookingsResponse.ok)
-        
-        if (bookingsResponse.ok) {
-          const bookingsJson = await bookingsResponse.json()
-          bookingsData = bookingsJson.content || bookingsJson || []
-          console.log('Bookings fetched from bookings API:', bookingsData.length)
-          console.log('Bookings data:', bookingsData)
-        } else {
-          console.log('Bookings API failed with status:', bookingsResponse.status)
-          const errorText = await bookingsResponse.text()
-          console.log('Bookings API error:', errorText)
-          console.log('Falling back to orders API')
-          // Fallback to orders API if bookings API fails
-          const ordersResponse = await fetch('http://localhost:8080/api/orders', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
+        if (ordersResponse.ok) {
+          const ordersJson = await ordersResponse.json()
+          const ordersData = ordersJson.content || ordersJson || []
+          console.log('Orders fetched, extracting booking data:', ordersData.length)
           
-          if (ordersResponse.ok) {
-            const ordersJson = await ordersResponse.json()
-            const ordersData = ordersJson.content || ordersJson || []
-            console.log('Orders fetched, extracting booking data:', ordersData.length)
-            
-            // Extract booking information from dine-in orders (only table bookings)
-            bookingsData = ordersData
-              .filter(order => 
-                (order.tableNumber && (order.bookingType === 'TABLE_BOOKING' || order.items?.length === 0)) ||
-                (order.tableNumber && order.specialInstructions?.includes('Booking for'))
-              )
-              .map(order => ({
-                id: order.id,
-                customerName: order.customerName || `Customer ${order.userId?.slice(-8)}`,
-                customerEmail: order.customerEmail || 'customer@email.com',
-                customerPhone: order.customerPhone || '+91 98765 43210',
-                tableNumber: order.tableNumber || 'T1',
-                peopleCount: order.peopleCount || order.specialInstructions?.match(/(\d+)\s+guests/i)?.[1] || 2,
-                timeSlot: order.timeSlot || '12:00-13:00',
-                bookingDate: order.orderDate || new Date().toISOString().split('T')[0],
-                status: order.status === 'COMPLETED' ? 'COMPLETED' : 'BOOKED',
-                specialRequests: order.specialInstructions || 'Table booking',
-                orderId: order.id
-              }))
-            
-            console.log('Bookings extracted from orders:', bookingsData.length)
-          }
+          // Extract booking information from dine-in orders
+          const bookingsFromOrders = ordersData
+            .filter(order => 
+              (order.tableNumber && (order.bookingType === 'TABLE_BOOKING' || order.items?.length === 0)) ||
+              (order.tableNumber && order.specialInstructions?.includes('Booking for'))
+            )
+            .map(order => ({
+              id: order.id,
+              customerName: order.customerName || `Customer ${order.userId?.slice(-8)}`,
+              customerEmail: order.customerEmail || 'customer@email.com',
+              customerPhone: order.customerPhone || '+91 98765 43210',
+              tableNumber: order.tableNumber || 'T1',
+              numberOfGuests: order.peopleCount || parseInt(order.specialInstructions?.match(/(\d+)\s+guests/i)?.[1]) || 2,
+              timeSlot: order.timeSlot || new Date(order.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              bookingDate: order.orderDate || new Date(order.createdAt).toISOString().split('T')[0],
+              status: order.status === 'COMPLETED' ? 'COMPLETED' : 'BOOKED',
+              specialRequests: order.specialInstructions || 'Table booking'
+            }))
+          
+          console.log('Bookings extracted from orders:', bookingsFromOrders.length)
+          setBookings(bookingsFromOrders)
         }
-      } catch (error) {
-        console.log('Both APIs failed, no booking data available')
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError)
+        setBookings([])
       }
-      
-      // Apply local status changes
-      bookingsData = bookingsData.map(booking => {
-        console.log(`Checking booking ${booking.id} against cancelled:`, cancelledBookings.includes(booking.id))
-        console.log(`Checking booking ${booking.id} against completed:`, completedBookings.includes(booking.id))
-        
-        if (cancelledBookings.includes(booking.id)) {
-          console.log(`Setting booking ${booking.id} to CANCELLED`)
-          return { ...booking, status: 'CANCELLED' }
-        }
-        if (completedBookings.includes(booking.id)) {
-          console.log(`Setting booking ${booking.id} to COMPLETED`)
-          return { ...booking, status: 'COMPLETED' }
-        }
-        return booking
-      })
-      
-      console.log('Final bookings after applying local changes:', bookingsData.map(b => ({ id: b.id, status: b.status })))
-      
-      // Sort bookings by creation time (most recent first)
-      bookingsData.sort((a, b) => {
-        const dateA = new Date(a.createdAt || a.bookingDate || a.orderDate || 0)
-        const dateB = new Date(b.createdAt || b.bookingDate || b.orderDate || 0)
-        return dateB.getTime() - dateA.getTime()
-      })
-      
-      setBookings(bookingsData)
-      
-      // Force re-application of local status changes
-      setTimeout(() => {
-        console.log('Force re-applying local status changes')
-        setBookings(prevBookings => 
-          prevBookings.map(booking => {
-            if (cancelledBookings.includes(booking.id)) {
-              console.log(`Force setting booking ${booking.id} to CANCELLED`)
-              return { ...booking, status: 'CANCELLED' }
-            }
-            if (completedBookings.includes(booking.id)) {
-              console.log(`Force setting booking ${booking.id} to COMPLETED`)
-              return { ...booking, status: 'COMPLETED' }
-            }
-            return booking
-          })
-        )
-      }, 100)
-      
-      console.log('Waiter bookings fetched:', bookingsData.length)
-      
-    } catch (error) {
-      console.error('Failed to fetch waiter bookings:', error)
-      console.log('Using empty bookings array due to API failures')
-      setBookings([])
     }
   }
 
@@ -508,6 +455,20 @@ export const WaiterDashboard = () => {
     )
   })
 
+  // Sort orders by creation time (most recent first)
+  filteredOrders.sort((a, b) => {
+    const dateA = new Date(a.createdAt || a.orderDate || 0)
+    const dateB = new Date(b.createdAt || b.orderDate || 0)
+    return dateB.getTime() - dateA.getTime()
+  })
+
+  // Sort bookings by creation time (most recent first)
+      filteredBookings.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.bookingDate || a.timeSlot || 0)
+        const dateB = new Date(b.createdAt || b.bookingDate || b.timeSlot || 0)
+        return dateB.getTime() - dateA.getTime()
+      })
+
   const getActiveOrdersCount = () => orders.filter(order => ['CONFIRMED', 'PREPARING', 'READY_FOR_SERVICE'].includes(order.status)).length
   const getReadyOrdersCount = () => orders.filter(order => order.status === 'READY_FOR_SERVICE').length
   const getCompletedOrdersCount = () => orders.filter(order => order.status === 'SERVED').length
@@ -547,6 +508,22 @@ export const WaiterDashboard = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <button
+                  onClick={() => {
+                    if (activeTab === 'orders') {
+                      fetchOrders()
+                    } else if (activeTab === 'bookings') {
+                      fetchBookings()
+                    }
+                    toast.success('Data refreshed!')
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center space-x-2"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Refresh</span>
+                </button>
               </div>
             </div>
 

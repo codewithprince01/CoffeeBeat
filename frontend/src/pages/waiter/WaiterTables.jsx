@@ -91,6 +91,13 @@ const WaiterTables = () => {
         return !isCleared
       })
       
+      // Sort bookings by creation time (most recent first)
+      bookingsData.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.bookingDate || a.timeSlot || 0)
+        const dateB = new Date(b.createdAt || b.bookingDate || b.timeSlot || 0)
+        return dateB.getTime() - dateA.getTime()
+      })
+      
       const tablesData = generateDefaultTables()
       
       setTables(tablesData)
