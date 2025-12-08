@@ -155,18 +155,7 @@ export const Navbar = () => {
               </Link>
             )}
             
-            {/* Customer Dashboard Link */}
-            {isAuthenticated && (user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER') && (
-              <Link
-                to="/dashboard/customer"
-                className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
-                  location.pathname.startsWith('/dashboard/customer') ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
-                }`}
-              >
-                Dashboard
-              </Link>
-            )}
-          </div>
+                      </div>
 
           {/* Right side items */}
           <div className="flex items-center space-x-4">
@@ -210,11 +199,11 @@ export const Navbar = () => {
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-gray-100 dark:bg-gray-800 backdrop-blur-md rounded-lg shadow-xl py-2 z-50 border border-gray-300 dark:border-gray-600 animate-fadeInUp">
                       <Link
-                        to={user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER' ? '/dashboard/customer' : '/dashboard'}
+                        to={user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER' ? '/profile' : '/dashboard'}
                         className="block px-4 py-2 text-sm text-coffee-medium-roast dark:text-coffee-latte hover:bg-coffee-cream/50 dark:hover:bg-black/50 hover:text-coffee-caramel dark:hover:text-coffee-cream transition-all duration-300"
                         onClick={() => setIsProfileDropdownOpen(false)}
                       >
-                        Dashboard
+                        {user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER' ? 'Profile' : 'Dashboard'}
                       </Link>
                       <button
                         onClick={handleLogout}
@@ -292,17 +281,7 @@ export const Navbar = () => {
                 </Link>
               )}
               
-              {/* Customer Dashboard Link */}
-              {isAuthenticated && (user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER') && (
-                <Link
-                  to="/dashboard/customer"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-              )}
-              
+                            
               {isAuthenticated && (
                 <>
                   <button

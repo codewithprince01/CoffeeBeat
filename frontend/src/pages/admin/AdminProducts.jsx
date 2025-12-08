@@ -21,53 +21,34 @@ const AdminProducts = () => {
 
   // Helper function to get the correct image URL
   const getProductImageUrl = (product) => {
-    if (product.imageUrl) {
-      // For backend uploaded images (like /uploads/products/), return with full URL
-      if (product.imageUrl.startsWith('/uploads/')) {
-        console.log('Using backend uploaded image:', product.imageUrl)
-        return `${import.meta.env.VITE_API_URL || 'http://localhost:8081'}${product.imageUrl}`
-      }
-      
-      // Check if it's a stored image (from our upload system)
-      if (product.imageUrl.startsWith('/images/products/')) {
-        const filename = product.imageUrl.split('/').pop()
-        // Try to get from memory storage first
-        const uploadedImage = getUploadedImage(filename)
-        if (uploadedImage) {
-          return uploadedImage // Return the base64 data from memory
-        }
-        // Fallback to localStorage check
-        const storedImage = getStoredImage(filename)
-        if (storedImage) {
-          return storedImage
-        }
-      }
-      
-      // For base64 images, check if it's valid
-      if (product.imageUrl.startsWith('data:')) {
-        // If it's the shortened "data:image/..." from backend, use default image
-        if (product.imageUrl === 'data:image/...' || product.imageUrl.startsWith('data:image/...') || product.imageUrl.length < 50) {
-          console.log('Using default image for invalid/short data URL')
-          // Use placeholder images based on product category
-          const category = product.category?.toLowerCase() || 'coffee'
-          const placeholderImages = {
-            'coffee': 'https://images.unsplash.com/photo-1561048021-3e5c8d5b7d7b?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
-            'tea': 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cda9?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
-            'food': 'https://images.unsplash.com/photo-1565299624946-b28f40a0fe38?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
-            'pastry': 'https://images.unsplash.com/photo-1558969875-861e8f5f6e91?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
-            'pastries': 'https://images.unsplash.com/photo-1558969875-861e8f5f6e91?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80'
-          }
-          return placeholderImages[category] || placeholderImages['coffee']
-        }
-        // Only return valid base64 images
-        if (product.imageUrl.includes('base64,')) {
-          return product.imageUrl
-        }
-      }
-      
-      // For external URLs or fallback
+    if (!product.imageUrl) {
+      console.log('Product has no imageUrl:', product)
+      return null
+    }
+
+    console.log('Product image URL:', product.imageUrl)
+    console.log('Product object:', product)
+
+    // Handle different image URL formats
+    if (product.imageUrl.startsWith('/uploads/') || product.imageUrl.startsWith('/api/uploads/')) {
+      const fullUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8081'}${product.imageUrl}`
+      console.log('Using backend image URL:', fullUrl)
+      return fullUrl
+    }
+    
+    // Handle base64 images
+    if (product.imageUrl.startsWith('data:image/')) {
+      console.log('Using base64 image')
       return product.imageUrl
     }
+    
+    // Handle full URLs
+    if (product.imageUrl.startsWith('http')) {
+      console.log('Using full URL:', product.imageUrl)
+      return product.imageUrl
+    }
+    
+    console.log('Unknown image URL format:', product.imageUrl)
     return null
   }
 
@@ -86,6 +67,18 @@ const AdminProducts = () => {
 
       // Handle paginated response
       const productsData = response.data || response.content || response || []
+      console.log('Products data before setting:', productsData)
+      
+      // Log each product's image URL
+      productsData.forEach((product, index) => {
+        console.log(`Product ${index + 1}:`, {
+          id: product.id,
+          name: product.name,
+          imageUrl: product.imageUrl,
+          hasImage: !!product.imageUrl
+        })
+      })
+      
       setProducts(productsData)
 
       console.log('Loaded products from backend:', productsData.length)
@@ -109,12 +102,13 @@ const AdminProducts = () => {
     }
   }
 
-  const handleCreateProduct = async (productData) => {
+  const handleCreateProduct = async (productData, imageFile = null) => {
     try {
       console.log('Creating product with data:', productData)
+      console.log('With image:', imageFile ? imageFile.name : 'No image')
 
       // Create product via backend API
-      await productService.createProduct(productData)
+      await productService.createProduct(productData, imageFile)
       console.log('Product created successfully via backend')
 
       fetchProducts()
@@ -126,25 +120,27 @@ const AdminProducts = () => {
     }
   }
 
-  const handleUpdateProduct = async (productId, productData) => {
+  const handleUpdateProduct = async (productId, productData, imageFile = null) => {
     try {
-      await productService.updateProduct(productId, productData)
+      await productService.updateProduct(productId, productData, imageFile)
       fetchProducts()
       setShowEditModal(false)
       setSelectedProduct(null)
+      toast.success('Product updated successfully!')
     } catch (error) {
       console.error('Failed to update product:', error)
+      toast.error('Failed to update product: ' + (error.response?.data?.message || error.message))
     }
   }
 
   const handleDeleteProduct = async (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await productService.deleteProduct(productId)
-        fetchProducts()
-      } catch (error) {
-        console.error('Failed to delete product:', error)
-      }
+    try {
+      await productService.deleteProduct(productId)
+      fetchProducts()
+      toast.success('Product deleted successfully!')
+    } catch (error) {
+      console.error('Failed to delete product:', error)
+      toast.error('Failed to delete product: ' + (error.response?.data?.message || error.message))
     }
   }
 
@@ -301,14 +297,21 @@ const AdminProducts = () => {
                   src={getProductImageUrl(product)}
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.log('Image failed to load, showing placeholder')
+                    e.target.style.display = 'none'
+                    e.target.nextSibling.style.display = 'flex'
+                  }}
+                  onLoad={(e) => {
+                    console.log('Image loaded successfully:', e.target.src)
+                  }}
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              )}
+              ) : null}
+              <div className="w-full h-full flex items-center justify-center" style={{display: getProductImageUrl(product) ? 'none' : 'flex'}}>
+                <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
               <div className="absolute top-2 right-2">
                 <button
                   onClick={() => {
@@ -404,7 +407,7 @@ const AdminProducts = () => {
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-screen overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Product</h2>
             <ProductForm
-              product={selectedProduct}
+              initialData={selectedProduct}
               categories={categories}
               onSubmit={(productData) => handleUpdateProduct(selectedProduct.id, productData)}
               onCancel={() => {
@@ -497,37 +500,21 @@ const AdminProducts = () => {
   )
 }
 
-// ProductForm Component
-const ProductForm = ({ product, categories, onSubmit, onCancel, formatCategoryName }) => {
+const ProductForm = ({ initialData, onSubmit, onCancel, categories, formatCategoryName }) => {
   const [formData, setFormData] = useState({
-    name: product?.name || '',
-    description: product?.description || '',
-    price: product?.price || '',
-    category: product?.category || '',
-    stock: product?.stock || 0,
-    active: product?.active !== undefined ? product.active : true,
-    imageUrl: product?.imageUrl || '',
-    ingredients: product?.ingredients || '',
-    preparationTime: product?.preparationTime || '',
-    allergens: product?.allergens || ''
+    name: initialData?.name || '',
+    description: initialData?.description || '',
+    price: initialData?.price || '',
+    category: initialData?.category || '',
+    stock: initialData?.stock || 0,
+    active: initialData?.active !== undefined ? initialData.active : true,
+    imageUrl: initialData?.imageUrl || '',
+    ingredients: initialData?.ingredients || '',
+    preparationTime: initialData?.preparationTime || '',
+    allergens: initialData?.allergens || ''
   })
   const [selectedFile, setSelectedFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState('')
-
-  // Set initial image preview when component loads
-  useEffect(() => {
-    if (product?.imageUrl) {
-      if (product.imageUrl.startsWith('/images/products/')) {
-        const filename = product.imageUrl.split('/').pop()
-        const storedImage = getStoredImage(filename)
-        if (storedImage) {
-          setImagePreview(storedImage)
-        }
-      } else {
-        setImagePreview(product.imageUrl)
-      }
-    }
-  }, [product])
+  const [imagePreview, setImagePreview] = useState(initialData?.imageUrl || '')
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -543,36 +530,12 @@ const ProductForm = ({ product, categories, onSubmit, onCancel, formatCategoryNa
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    let imageUrl = formData.imageUrl
-
-    // If a file is selected, upload it first
-    if (selectedFile) {
-      try {
-        toast.loading('Uploading image...', { id: 'upload' })
-        const uploadResult = await uploadImageToPublic(selectedFile, formData.name)
-
-        if (uploadResult.success) {
-          imageUrl = uploadResult.imageUrl
-          toast.success('Image uploaded successfully!', { id: 'upload' })
-        } else {
-          toast.error(uploadResult.error, { id: 'upload' })
-          return
-        }
-      } catch (error) {
-        console.error('Error uploading image:', error)
-        toast.error('Failed to upload image', { id: 'upload' })
-        return
-      }
-    }
-
-    // Generate slug from name if not provided
+    
     const productData = {
       ...formData,
-      imageUrl,
       slug: formData.slug || formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
     }
-    onSubmit(productData)
+    onSubmit(productData, selectedFile)
   }
 
   return (
@@ -594,8 +557,8 @@ const ProductForm = ({ product, categories, onSubmit, onCancel, formatCategoryNa
             type="number"
             step="0.01"
             required
-            value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+            value={formData.price || 0}
+            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -630,8 +593,8 @@ const ProductForm = ({ product, categories, onSubmit, onCancel, formatCategoryNa
           <label className="block text-sm font-medium text-gray-700">Stock Quantity</label>
           <input
             type="number"
-            value={formData.stock}
-            onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
+            value={formData.stock || 0}
+            onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -732,7 +695,7 @@ const ProductForm = ({ product, categories, onSubmit, onCancel, formatCategoryNa
           type="submit"
           className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
         >
-          {product ? 'Update Product' : 'Create Product'}
+          {initialData ? 'Update Product' : 'Create Product'}
         </button>
       </div>
     </form>

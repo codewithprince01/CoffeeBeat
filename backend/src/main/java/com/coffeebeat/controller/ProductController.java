@@ -514,6 +514,39 @@ public class ProductController {
     }
 
     /**
+     * Create product with JSON data (admin only)
+     */
+    @PostMapping("/admin/create-simple")
+    public ResponseEntity<?> createProductSimple(
+            @RequestBody @Valid CreateProductRequest productRequest) {
+        try {
+            // Convert DTO to Product entity
+            Product product = convertToProduct(productRequest);
+            Product created = productService.createProduct(product);
+            logger.info("Product created: {}", created.getId());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Product created successfully");
+            response.put("data", created);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Product creation validation failed: {}", e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            logger.error("Failed to create product: {}", e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Failed to create product: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
      * Create product with image upload (admin only)
      */
     @PostMapping("/admin/create")
@@ -543,6 +576,40 @@ public class ProductController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", "Failed to create product");
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * Update product with JSON data (admin only)
+     */
+    @PutMapping("/admin/{id}/simple")
+    public ResponseEntity<?> updateProductSimple(
+            @PathVariable String id,
+            @RequestBody @Valid UpdateProductRequest productRequest) {
+        try {
+            // Convert DTO to Product entity
+            Product product = convertToProduct(productRequest);
+            Product updated = productService.updateProduct(id, product);
+            logger.info("Product updated: {}", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Product updated successfully");
+            response.put("data", updated);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Product update validation failed: {}", e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            logger.error("Failed to update product: {}", e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Failed to update product: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }

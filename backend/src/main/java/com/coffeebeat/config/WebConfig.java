@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,5 +30,20 @@ public class WebConfig implements WebMvcConfigurer {
         // Also map /uploads/** just in case
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadAbsolutePath + "/");
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/uploads/**")
+                .allowedOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:5174")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+        
+        registry.addMapping("/api/uploads/**")
+                .allowedOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:5174")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 }
