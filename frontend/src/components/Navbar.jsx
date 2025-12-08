@@ -199,11 +199,11 @@ export const Navbar = () => {
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-gray-100 dark:bg-gray-800 backdrop-blur-md rounded-lg shadow-xl py-2 z-50 border border-gray-300 dark:border-gray-600 animate-fadeInUp">
                       <Link
-                        to={user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER' ? '/profile' : '/dashboard'}
+                        to="/dashboard/customer"
                         className="block px-4 py-2 text-sm text-coffee-medium-roast dark:text-coffee-latte hover:bg-coffee-cream/50 dark:hover:bg-black/50 hover:text-coffee-caramel dark:hover:text-coffee-cream transition-all duration-300"
                         onClick={() => setIsProfileDropdownOpen(false)}
                       >
-                        {user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER' ? 'Profile' : 'Dashboard'}
+                        Dashboard
                       </Link>
                       <button
                         onClick={handleLogout}
@@ -214,7 +214,8 @@ export const Navbar = () => {
                           <span>Logout</span>
                         </div>
                       </button>
-                    </div>
+                      
+                                          </div>
                   )}
                 </div>
               </div>
