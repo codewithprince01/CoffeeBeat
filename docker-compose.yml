@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: coffee-beat-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: coffee-beat
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - coffee-beat-network
+
+  # Backend Spring Boot Application
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coffee-beat-backend
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      # Database
+      SPRING_DATA_MONGODB_URI: mongodb://admin:password123@mongodb:27017/coffee-beat?authSource=admin
+      
+      # JWT
+      JWT_SECRET: your-super-secret-jwt-key-here-change-in-production
+      JWT_EXPIRATION: 86400000
+      JWT_REFRESH_EXPIRATION: 604800000
+      
+      # Cloudinary (optional - replace with your keys)
+      # CLOUDINARY_CLOUD_NAME: your-cloud-name
+      # CLOUDINARY_API_KEY: your-api-key
+      # CLOUDINARY_API_SECRET: your-api-secret
+      
+      # Application
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8081
+      
+      # CORS
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:80
+      
+      # WebSocket
+      WEBSOCKET_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:80
+      
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_COFFEEBEAT: INFO
+    depends_on:
+      - mongodb
+    networks:
+      - coffee-beat-network
+    volumes:
+      - backend_logs:/app/logs
+      - ./uploads:/app/uploads
+
+  # Frontend Nginx Server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: coffee-beat-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - coffee-beat-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  coffee-beat-network:
+    driver: bridge

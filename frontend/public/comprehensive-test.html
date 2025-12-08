@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffee Beat API Test Suite</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+        }
+
+        .test-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .result h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .config-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .config-info h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .config-info code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #d32f2f;
+            font-family: 'Courier New', monospace;
+        }
+
+        .demo-accounts {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .demo-accounts h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .demo-accounts p {
+            margin: 5px 0;
+            color: #856404;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>☕ Coffee Beat API Test Suite</h1>
+            <p>Comprehensive testing for frontend-backend communication</p>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 Configuration</h2>
+            <div class="config-info">
+                <h3>Current Configuration</h3>
+                <p><strong>Backend URL:</strong> <code id="backend-url">http://localhost:8080</code></p>
+                <p><strong>Context Path:</strong> <code>/api</code></p>
+                <p><strong>Full Login Endpoint:</strong> <code
+                        id="login-endpoint">http://localhost:8080/api/auth/login</code></p>
+                <p><strong>Full Register Endpoint:</strong> <code
+                        id="register-endpoint">http://localhost:8080/api/auth/register</code></p>
+            </div>
+
+            <div class="form-group">
+                <label>Backend URL:</label>
+                <input type="text" id="base-url" value="http://localhost:8080" placeholder="http://localhost:8080">
+            </div>
+
+            <button onclick="updateConfig()">Update Configuration</button>
+            <button onclick="testConnection()">Test Connection</button>
+        </div>
+
+        <div class="grid">
+            <div class="test-section">
+                <h2>🔐 Login Test</h2>
+
+                <div class="demo-accounts">
+                    <h4>Demo Accounts</h4>
+                    <p><strong>Admin:</strong> admin@coffee.test / Password123!</p>
+                    <p><strong>Chef:</strong> chef@coffee.test / Password123!</p>
+                    <p><strong>Waiter:</strong> waiter@coffee.test / Password123!</p>
+                    <p><strong>Customer:</strong> customer@coffee.test / Password123!</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="login-email" value="admin@coffee.test">
+                </div>
+
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="login-password" value="Password123!">
+                </div>
+
+                <button onclick="testLogin()">Test Login</button>
+                <button onclick="testLoginFetch()">Test Login (Fetch API)</button>
+
+                <div id="login-result"></div>
+            </div>
+
+            <div class="test-section">
+                <h2>📝 Register Test</h2>
+
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" id="register-name" value="Test User">
+                </div>
+
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="register-email" value="testuser@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="register-password" value="Password123!">
+                </div>
+
+                <button onclick="testRegister()">Test Register</button>
+                <button onclick="testRegisterFetch()">Test Register (Fetch API)</button>
+
+                <div id="register-result"></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔍 CORS Diagnostic</h2>
+            <button onclick="testCORS()">Test CORS Configuration</button>
+            <button onclick="testPreflight()">Test Preflight Request</button>
+            <div id="cors-result"></div>
+        </div>
+    </div>
+
+    <script>
+        let baseURL = 'http://localhost:8080';
+
+        function updateConfig() {
+            baseURL = document.getElementById('base-url').value;
+            document.getElementById('backend-url').textContent = baseURL;
+            document.getElementById('login-endpoint').textContent = `${baseURL}/api/auth/login`;
+            document.getElementById('register-endpoint').textContent = `${baseURL}/api/auth/register`;
+            showResult('Configuration updated successfully!', 'success', 'login-result');
+        }
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = '<p>Testing connection...</p>';
+
+            try {
+                const response = await fetch(`${baseURL}/api/auth/login`, {
+                    method: 'OPTIONS',
+                });
+
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+
+                showResult('Connection successful!', 'success', 'login-result', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: headers
+                });
+            } catch (error) {
+                showResult('Connection failed!', 'error', 'login-result', {
+                    error: error.message,
+                    type: error.name
+                });
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const resultDiv = document.getElementById('login-result');
+
+            resultDiv.innerHTML = '<p>Logging in with Axios...</p>';
+
+            try {
+                console.log('Attempting login with:', { email, password: '***' });
+                console.log('URL:', `${baseURL}/api/auth/login`);
+
+                const response = await axios.post(`${baseURL}/api/auth/login`, {
+                    email: email,
+                    password: password
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    withCredentials: true
+                });
+
+                console.log('Login successful:', response.data);
+
+                showResult('✅ Login Successful!', 'success', 'login-result', {
+                    status: response.status,
+                    data: response.data,
+                    headers: response.headers
+                });
+
+                // Store token for testing
+                if (response.data.accessToken) {
+                    localStorage.setItem('token', response.data.accessToken);
+                    localStorage.setItem('refreshToken', response.data.refreshToken);
+                }
+
+            } catch (error) {
+                console.error('Login error:', error);
+
+                showResult('❌ Login Failed!', 'error', 'login-result', {
+                    status: error.response?.status || 'No response',
+                    statusText: error.response?.statusText || '',
+                    message: error.response?.data?.message || error.message,
+                    data: error.response?.data || null,
+                    headers: error.response?.headers || null,
+                    errorType: error.name,
+                    fullError: error.toString()
+                });
+            }
+        }
+
+        async function testLoginFetch() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const resultDiv = document.getElementById('login-result');
+
+            resultDiv.innerHTML = '<p>Logging in with Fetch API...</p>';
+
+            try {
+                console.log('Attempting login with Fetch:', { email, password: '***' });
+                console.log('URL:', `${baseURL}/api/auth/login`);
+
+                const response = await fetch(`${baseURL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    console.log('Login successful:', data);
+
+                    showResult('✅ Login Successful (Fetch)!', 'success', 'login-result', {
+                        status: response.status,
+                        data: data
+                    });
+
+                    if (data.accessToken) {
+                        localStorage.setItem('token', data.accessToken);
+                        localStorage.setItem('refreshToken', data.refreshToken);
+                    }
+                } else {
+                    throw new Error(data.message || 'Login failed');
+                }
+
+            } catch (error) {
+                console.error('Login error:', error);
+
+                showResult('❌ Login Failed (Fetch)!', 'error', 'login-result', {
+                    message: error.message,
+                    errorType: error.name
+                });
+            }
+        }
+
+        async function testRegister() {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const resultDiv = document.getElementById('register-result');
+
+            resultDiv.innerHTML = '<p>Registering with Axios...</p>';
+
+            try {
+                console.log('Attempting registration:', { name, email, password: '***' });
+                console.log('URL:', `${baseURL}/api/auth/register`);
+
+                const response = await axios.post(`${baseURL}/api/auth/register`, {
+                    name: name,
+                    email: email,
+                    password: password
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    withCredentials: true
+                });
+
+                console.log('Registration successful:', response.data);
+
+                showResult('✅ Registration Successful!', 'success', 'register-result', {
+                    status: response.status,
+                    data: response.data
+                });
+
+                if (response.data.accessToken) {
+                    localStorage.setItem('token', response.data.accessToken);
+                    localStorage.setItem('refreshToken', response.data.refreshToken);
+                }
+
+            } catch (error) {
+                console.error('Registration error:', error);
+
+                showResult('❌ Registration Failed!', 'error', 'register-result', {
+                    status: error.response?.status || 'No response',
+                    statusText: error.response?.statusText || '',
+                    message: error.response?.data?.message || error.message,
+                    data: error.response?.data || null
+                });
+            }
+        }
+
+        async function testRegisterFetch() {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const resultDiv = document.getElementById('register-result');
+
+            resultDiv.innerHTML = '<p>Registering with Fetch API...</p>';
+
+            try {
+                const response = await fetch(`${baseURL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('✅ Registration Successful (Fetch)!', 'success', 'register-result', {
+                        status: response.status,
+                        data: data
+                    });
+
+                    if (data.accessToken) {
+                        localStorage.setItem('token', data.accessToken);
+                        localStorage.setItem('refreshToken', data.refreshToken);
+                    }
+                } else {
+                    throw new Error(data.message || 'Registration failed');
+                }
+
+            } catch (error) {
+                showResult('❌ Registration Failed (Fetch)!', 'error', 'register-result', {
+                    message: error.message
+                });
+            }
+        }
+
+        async function testCORS() {
+            const resultDiv = document.getElementById('cors-result');
+            resultDiv.innerHTML = '<p>Testing CORS...</p>';
+
+            try {
+                const response = await fetch(`${baseURL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: 'test@test.com',
+                        password: 'test'
+                    })
+                });
+
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers'),
+                    'Access-Control-Allow-Credentials': response.headers.get('Access-Control-Allow-Credentials')
+                };
+
+                showResult('CORS Headers', 'success', 'cors-result', corsHeaders);
+
+            } catch (error) {
+                showResult('CORS Test Failed', 'error', 'cors-result', {
+                    error: error.message,
+                    note: 'This might be a CORS issue. Check browser console for details.'
+                });
+            }
+        }
+
+        async function testPreflight() {
+            const resultDiv = document.getElementById('cors-result');
+            resultDiv.innerHTML = '<p>Testing preflight request...</p>';
+
+            try {
+                const response = await fetch(`${baseURL}/api/auth/login`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type',
+                    }
+                });
+
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    if (key.toLowerCase().startsWith('access-control')) {
+                        headers[key] = value;
+                    }
+                });
+
+                showResult('Preflight Response', 'success', 'cors-result', {
+                    status: response.status,
+                    corsHeaders: headers
+                });
+
+            } catch (error) {
+                showResult('Preflight Failed', 'error', 'cors-result', {
+                    error: error.message
+                });
+            }
+        }
+
+        function showResult(title, type, elementId, data = null) {
+            const resultDiv = document.getElementById(elementId);
+            const className = type === 'success' ? 'result success' : 'result error';
+
+            let html = `<div class="${className}">`;
+            html += `<h3>${title}</h3>`;
+
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+
+            html += '</div>';
+
+            resultDiv.innerHTML = html;
+        }
+
+        // Initialize
+        updateConfig();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h2>Test Login</h2>
+    <div class="form-group">
+        <label>Email:</label>
+        <input type="email" id="email" value="admin@coffee.test">
+    </div>
+    <div class="form-group">
+        <label>Password:</label>
+        <input type="password" id="password" value="Password123!">
+    </div>
+    <button onclick="login()">Login</button>
+    <div id="result"></div>
+
+    <script>
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const result = document.getElementById('result');
+            
+            result.textContent = 'Logging in...';
+            
+            try {
+                const response = await axios.post('http://localhost:8080/api/auth/login', {
+                    email: email,
+                    password: password
+                });
+                
+                result.innerHTML = `
+                    <strong>✅ Login Successful!</strong>
+                    <pre>${JSON.stringify(response.data, null, 2)}</pre>
+                    <p>Access Token: ${response.data.accessToken.substring(0, 30)}...</p>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <strong>❌ Error:</strong>
+                    <p>Status: ${error.response?.status || 'No response'}</p>
+                    <p>Message: ${error.response?.data?.message || error.message}</p>
+                    <pre>${JSON.stringify(error.response?.data || error, null, 2)}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

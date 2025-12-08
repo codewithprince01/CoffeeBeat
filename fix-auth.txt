@@ -1,0 +1,12 @@
+// Only clear tokens if this is a real auth failure, not a connection issue
+        // Don't auto-logout on WebSocket or network failures
+        if (originalRequest.url && !originalRequest.url.includes('/ws')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+
+          // Only redirect if not already on login page
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
+        }
