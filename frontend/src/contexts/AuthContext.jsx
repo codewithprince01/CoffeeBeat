@@ -341,14 +341,42 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR })
   }
 
+  // Get dashboard redirect path based on user role
+  const getDashboardPath = () => {
+    const role = state.user?.role?.toLowerCase()
+    switch (role) {
+      case 'admin':
+      case 'role_admin':
+        return '/dashboard/admin'
+      case 'chef':
+      case 'role_chef':
+        return '/dashboard/chef'
+      case 'waiter':
+      case 'role_waiter':
+        return '/dashboard/waiter'
+      case 'customer':
+      case 'role_customer':
+        return '/dashboard/customer'
+      default:
+        return '/dashboard'
+    }
+  }
+
   // Check user role
   const hasRole = (role) => {
-    return state.user?.role === role
+    return state.user?.role === role || state.user?.role === `ROLE_${role.toUpperCase()}`
   }
 
   // Check if user has any of the specified roles
   const hasAnyRole = (roles) => {
-    return roles.includes(state.user?.role)
+    return roles.some(role => 
+      state.user?.role === role || state.user?.role === `ROLE_${role.toUpperCase()}`
+    )
+  }
+
+  // Check if user is staff (admin, chef, waiter)
+  const isStaffUser = () => {
+    return hasAnyRole(['admin', 'chef', 'waiter'])
   }
 
   const value = {
@@ -360,6 +388,8 @@ export const AuthProvider = ({ children }) => {
     clearError,
     hasRole,
     hasAnyRole,
+    isStaffUser,
+    getDashboardPath,
   }
 
   return (

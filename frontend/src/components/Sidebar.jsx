@@ -118,17 +118,17 @@ export const Sidebar = () => {
     ]
 
     switch (role) {
+      case 'admin':
       case 'ROLE_ADMIN':
-      case 'ADMIN':
         return adminItems
+      case 'chef':
       case 'ROLE_CHEF':
-      case 'CHEF':
         return chefItems
+      case 'waiter':
       case 'ROLE_WAITER':
-      case 'WAITER':
         return waiterItems
+      case 'customer':
       case 'ROLE_CUSTOMER':
-      case 'CUSTOMER':
         return customerItems
       default:
         return commonItems

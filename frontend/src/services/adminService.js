@@ -18,12 +18,12 @@ export const adminService = {
   },
 
   deactivateUser: async (id) => {
-    const response = await api.put(`/admin/users/${id}/deactivate`)
+    const response = await api.put(`/admin/users/${id}/toggle-active`)
     return response.data
   },
 
   activateUser: async (id) => {
-    const response = await api.put(`/admin/users/${id}/activate`)
+    const response = await api.put(`/admin/users/${id}/toggle-active`)
     return response.data
   },
 
@@ -107,8 +107,21 @@ export const adminService = {
   },
 
   getTodayAnalytics: async () => {
-    const response = await api.get('/admin/analytics/today')
-    return response.data
+    try {
+      const response = await api.get('/admin/analytics/today')
+      const data = response.data
+      
+      // Return completed orders revenue but total orders count
+      return {
+        ...data,
+        revenue: data.completedOrdersRevenue || 0,
+        orderCount: data.orderCount || 0, // Total orders (all statuses)
+        bookingCount: data.bookingCount || 0
+      }
+    } catch (error) {
+      console.error('Error fetching today analytics:', error)
+      throw error
+    }
   },
 
   getLast7DaysAnalytics: async () => {

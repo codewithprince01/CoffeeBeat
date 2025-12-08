@@ -196,12 +196,24 @@ public class AdminService {
         // Today's orders
         List<Order> todayOrders = orderRepository.findOrdersForToday(startOfDay, endOfDay);
         long todayOrderCount = todayOrders.size();
+        
+        logger.info("Found {} total orders for today", todayOrderCount);
 
-        // Today's revenue (from completed orders)
-        double todayRevenue = todayOrders.stream()
+        // Only completed orders for revenue
+        List<Order> completedOrders = todayOrders.stream()
+                .filter(order -> order.getStatus() == Order.OrderStatus.COMPLETED)
+                .collect(Collectors.toList());
+        
+        long completedOrderCount = completedOrders.size();
+        logger.info("Found {} completed orders for today", completedOrderCount);
+
+        // Today's revenue (from completed orders only)
+        double completedOrdersRevenue = completedOrders.stream()
                 .filter(order -> order.getPaymentStatus() == Order.PaymentStatus.PAID)
                 .mapToDouble(Order::getTotalPrice)
                 .sum();
+        
+        logger.info("Today's revenue from completed orders: {}", completedOrdersRevenue);
 
         // Today's bookings
         List<Booking> todayBookings = bookingRepository.findBookingsForToday(startOfDay, endOfDay);
@@ -213,11 +225,14 @@ public class AdminService {
                 .count();
 
         analytics.put("orderCount", todayOrderCount);
-        analytics.put("revenue", todayRevenue);
+        analytics.put("completedOrdersCount", completedOrderCount);
+        analytics.put("completedOrdersRevenue", completedOrdersRevenue);
+        analytics.put("revenue", completedOrdersRevenue); // Only completed orders revenue
         analytics.put("bookingCount", todayBookingCount);
         analytics.put("newUsers", todayNewUsers);
         analytics.put("date", startOfDay.toLocalDate());
 
+        logger.info("Today's analytics: {}", analytics);
         return analytics;
     }
 

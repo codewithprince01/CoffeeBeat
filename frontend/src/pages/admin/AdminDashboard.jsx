@@ -132,11 +132,22 @@ export const AdminDashboard = () => {
         ]
       }
 
-      // Set analytics data - map backend response to frontend structure with fallback
+      // Set analytics data - map backend response to frontend structure
+      let todayRevenue = 0
+      let todayOrders = 0
+      
+      if (todayAnalytics) {
+        todayRevenue = todayAnalytics.completedOrdersRevenue || 0
+        todayOrders = todayAnalytics.orderCount || 0 // Show total orders, not just completed
+        console.log('Using real data - Today Revenue:', todayRevenue, 'Today Orders:', todayOrders)
+      } else {
+        console.log('Using fallback data - Today Revenue: 0')
+      }
+
       setAnalytics({
-        todayOrders: todayAnalytics?.orderCount || 15,
+        todayOrders: todayOrders,
         todayBookings: todayAnalytics?.bookingCount || 8,
-        todayRevenue: todayAnalytics?.revenue || 450.75,
+        todayRevenue: todayRevenue,
         revenueData: revenueData,
         orderStatusData: formattedOrderStatusData,
         topProducts: topProductsData || [
@@ -165,7 +176,7 @@ export const AdminDashboard = () => {
       setAnalytics({
         todayOrders: 15,
         todayBookings: 8,
-        todayRevenue: 450.75,
+        todayRevenue: 0, // Start with 0 until real data loads
         revenueData: [
           { date: 'Mon', revenue: 450 },
           { date: 'Tue', revenue: 520 },
@@ -207,6 +218,7 @@ export const AdminDashboard = () => {
 
     } catch (error) {
       console.error('Failed to fetch today revenue:', error)
+      console.error('Error details:', error.response?.data || error.message)
       return null
     }
   }

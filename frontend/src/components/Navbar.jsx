@@ -111,32 +111,61 @@ export const Navbar = () => {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - Role Based */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link
-              to="/"
-              className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
-                location.pathname === '/' ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
-              }`}
-            >
-              Home
-            </Link>
-            <Link
-              to="/menu"
-              className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
-                location.pathname === '/menu' ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
-              }`}
-            >
-              Menu
-            </Link>
-            <Link
-              to="/about"
-              className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
-                location.pathname === '/about' ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
-              }`}
-            >
-              About
-            </Link>
+            {/* Customer/Public Navigation */}
+            {(!isAuthenticated || user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER') && (
+              <>
+                <Link
+                  to="/"
+                  className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
+                    location.pathname === '/' ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
+                  }`}
+                >
+                  Home
+                </Link>
+                <Link
+                  to="/menu"
+                  className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
+                    location.pathname === '/menu' ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
+                  }`}
+                >
+                  Menu
+                </Link>
+                <Link
+                  to="/about"
+                  className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
+                    location.pathname === '/about' ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
+                  }`}
+                >
+                  About
+                </Link>
+              </>
+            )}
+            
+            {/* Admin/Chef/Waiter Navigation - Only Dashboard */}
+            {isAuthenticated && (user?.role === 'admin' || user?.role === 'ROLE_ADMIN' || user?.role === 'chef' || user?.role === 'ROLE_CHEF' || user?.role === 'waiter' || user?.role === 'ROLE_WAITER') && (
+              <Link
+                to="/dashboard"
+                className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
+                  location.pathname.startsWith('/dashboard') ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
+                }`}
+              >
+                Dashboard
+              </Link>
+            )}
+            
+            {/* Customer Dashboard Link */}
+            {isAuthenticated && (user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER') && (
+              <Link
+                to="/dashboard/customer"
+                className={`text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 hover:bg-coffee-cream/50 dark:hover:bg-coffee-mocha/50 ${
+                  location.pathname.startsWith('/dashboard/customer') ? 'text-coffee-caramel dark:text-coffee-cream bg-coffee-cream/50 dark:bg-coffee-mocha/50' : ''
+                }`}
+              >
+                Dashboard
+              </Link>
+            )}
           </div>
 
           {/* Right side items */}
@@ -181,7 +210,7 @@ export const Navbar = () => {
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-gray-100 dark:bg-gray-800 backdrop-blur-md rounded-lg shadow-xl py-2 z-50 border border-gray-300 dark:border-gray-600 animate-fadeInUp">
                       <Link
-                        to="/dashboard"
+                        to={user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER' ? '/dashboard/customer' : '/dashboard'}
                         className="block px-4 py-2 text-sm text-coffee-medium-roast dark:text-coffee-latte hover:bg-coffee-cream/50 dark:hover:bg-black/50 hover:text-coffee-caramel dark:hover:text-coffee-cream transition-all duration-300"
                         onClick={() => setIsProfileDropdownOpen(false)}
                       >
@@ -221,40 +250,61 @@ export const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile menu - Role Based */}
         {isMobileMenuOpen && (
           <div className="md:hidden animate-fadeInUp">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-              <Link
-                to="/"
-                className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Home
-              </Link>
-              <Link
-                to="/menu"
-                className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Menu
-              </Link>
-              <Link
-                to="/about"
-                className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                About
-              </Link>
-              {isAuthenticated && (
+              {/* Customer/Public Navigation */}
+              {(!isAuthenticated || user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER') && (
                 <>
                   <Link
-                    to="/dashboard"
+                    to="/"
                     className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Dashboard
+                    Home
                   </Link>
+                  <Link
+                    to="/menu"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Menu
+                  </Link>
+                  <Link
+                    to="/about"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    About
+                  </Link>
+                </>
+              )}
+              
+              {/* Admin/Chef/Waiter Navigation - Only Dashboard */}
+              {isAuthenticated && (user?.role === 'admin' || user?.role === 'ROLE_ADMIN' || user?.role === 'chef' || user?.role === 'ROLE_CHEF' || user?.role === 'waiter' || user?.role === 'ROLE_WAITER') && (
+                <Link
+                  to="/dashboard"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+              )}
+              
+              {/* Customer Dashboard Link */}
+              {isAuthenticated && (user?.role === 'customer' || user?.role === 'ROLE_CUSTOMER') && (
+                <Link
+                  to="/dashboard/customer"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-coffee-medium-roast dark:text-coffee-latte hover:text-coffee-caramel dark:hover:text-coffee-cream hover:bg-coffee-cream/50 dark:hover:bg-black/50 transition-all duration-300"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+              )}
+              
+              {isAuthenticated && (
+                <>
                   <button
                     onClick={() => {
                       handleLogout()

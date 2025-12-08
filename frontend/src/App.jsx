@@ -81,15 +81,19 @@ function DashboardRedirect() {
   switch (user.role) {
     case 'ROLE_ADMIN':
     case 'ADMIN':
+    case 'admin':
       return <Navigate to="/dashboard/admin" replace />
     case 'ROLE_CHEF':
     case 'CHEF':
+    case 'chef':
       return <Navigate to="/dashboard/chef" replace />
     case 'ROLE_WAITER':
     case 'WAITER':
+    case 'waiter':
       return <Navigate to="/dashboard/waiter" replace />
     case 'ROLE_CUSTOMER':
     case 'CUSTOMER':
+    case 'customer':
       return <Navigate to="/dashboard/customer" replace />
     default:
       console.log('DashboardRedirect: Unknown role, redirecting to home')
@@ -110,7 +114,7 @@ function PublicRoute({ children }) {
   }
 
   // If authenticated and not a customer, redirect to dashboard
-  if (isAuthenticated && user && user.role !== 'ROLE_CUSTOMER' && user.role !== 'CUSTOMER') {
+  if (isAuthenticated && user && user.role !== 'ROLE_CUSTOMER' && user.role !== 'CUSTOMER' && user.role !== 'customer') {
     return <Navigate to="/dashboard" replace />
   }
 
@@ -131,7 +135,12 @@ function RootRedirect() {
     )
   }
 
-  // Always show home page for everyone (including authenticated users)
+  // If authenticated and staff user, redirect to dashboard
+  if (isAuthenticated && user && (user.role === 'admin' || user.role === 'ROLE_ADMIN' || user.role === 'chef' || user.role === 'ROLE_CHEF' || user.role === 'waiter' || user.role === 'ROLE_WAITER')) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  // Show home page for customers and non-authenticated users
   console.log('RootRedirect: Showing home page')
   return <HomePage />
 }

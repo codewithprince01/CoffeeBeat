@@ -14,6 +14,7 @@ const AdminUsers = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [togglingUser, setTogglingUser] = useState(null)
   const ITEMS_PER_PAGE = 8
 
   useEffect(() => {
@@ -165,11 +166,13 @@ const AdminUsers = () => {
   const handleUpdateUser = async (userId, userData) => {
     try {
       await adminService.updateUser(userId, userData)
+      toast.success('User updated successfully')
       fetchUsers()
       setShowEditModal(false)
       setSelectedUser(null)
     } catch (error) {
       console.error('Failed to update user:', error)
+      toast.error('Failed to update user')
     }
   }
 
@@ -178,14 +181,29 @@ const AdminUsers = () => {
 
   const handleToggleUserStatus = async (userId, isActive) => {
     try {
+      setTogglingUser(userId)
+      let updatedUser
       if (isActive) {
-        await adminService.deactivateUser(userId)
+        updatedUser = await adminService.deactivateUser(userId)
+        toast.success('User deactivated successfully')
       } else {
-        await adminService.activateUser(userId)
+        updatedUser = await adminService.activateUser(userId)
+        toast.success('User activated successfully')
       }
-      fetchUsers()
+      
+      // Update user in local state without full refresh
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, active: updatedUser.active } : user
+        )
+      )
     } catch (error) {
       console.error('Failed to toggle user status:', error)
+      toast.error('Failed to update user status. Please try again.')
+      // If API call fails, refresh the data
+      fetchUsers()
+    } finally {
+      setTogglingUser(null)
     }
   }
 
@@ -343,9 +361,10 @@ const AdminUsers = () => {
                       </button>
                       <button
                         onClick={() => handleToggleUserStatus(user.id, user.active)}
-                        className={`${user.active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
+                        disabled={togglingUser === user.id}
+                        className={`${user.active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'} ${togglingUser === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        {user.active ? 'Deactivate' : 'Activate'}
+                        {togglingUser === user.id ? 'Processing...' : (user.active ? 'Deactivate' : 'Activate')}
                       </button>
                     </div>
                   </td>
