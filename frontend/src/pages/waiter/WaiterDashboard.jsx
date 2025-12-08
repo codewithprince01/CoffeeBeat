@@ -87,16 +87,27 @@ export const WaiterDashboard = () => {
       console.log('Fetching waiter dashboard data...')
       setLoading(true)
       
+      // Check authentication token
+      const token = authService.getAdminToken()
+      console.log('Token available:', !!token)
+      if (!token) {
+        console.error('No authentication token found!')
+        setLoading(false)
+        return
+      }
+      
       let ordersData = []
       let bookingsData = []
       
       try {
         // Fetch orders using the service
+        console.log('Fetching orders...')
         const ordersResponse = await orderService.getAllOrders({ size: 100 })
         ordersData = ordersResponse.content || ordersResponse || []
         console.log('Orders fetched:', ordersData.length)
         
         // Fetch bookings using the service
+        console.log('Fetching bookings...')
         const bookingsResponse = await bookingService.getAllBookings()
         bookingsData = bookingsResponse || []
         console.log('Bookings fetched:', bookingsData.length)
@@ -176,7 +187,7 @@ export const WaiterDashboard = () => {
       
       const token = authService.getAdminToken()
       
-      const response = await fetch('http://localhost:8080/api/orders', {
+      const response = await fetch('http://localhost:8081/api/orders', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -254,7 +265,7 @@ export const WaiterDashboard = () => {
       
       // Try to get booking data from the proper bookings API
       try {
-        const bookingsResponse = await fetch('http://localhost:8080/api/bookings/all', {
+        const bookingsResponse = await fetch('http://localhost:8081/api/bookings/all', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

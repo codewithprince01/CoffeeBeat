@@ -36,7 +36,7 @@ const WaiterTables = () => {
       
       // Try to get booking-related data from orders endpoint
       try {
-        const ordersResponse = await fetch('http://localhost:8080/api/orders', {
+        const ordersResponse = await fetch('http://localhost:8081/api/orders', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -47,12 +47,17 @@ const WaiterTables = () => {
           const ordersJson = await ordersResponse.json()
           const ordersData = ordersJson.content || ordersJson || []
           console.log('Orders fetched, looking for booking data:', ordersData.length)
+          console.log('Sample order data:', ordersData[0])
           
-          // Extract booking information from orders (only table bookings)
+          // Extract booking information from orders (any order with tableNumber)
           bookingsData = ordersData
             .filter(order => 
-              (order.tableNumber && (order.bookingType === 'TABLE_BOOKING' || order.items?.length === 0)) ||
-              (order.tableNumber && order.specialInstructions?.includes('Booking for'))
+              order.tableNumber && 
+              (order.bookingType === 'TABLE_BOOKING' || 
+               order.bookingType === 'DINE_IN' ||
+               order.items?.length === 0 ||
+               order.specialInstructions?.includes('Booking') ||
+               order.specialInstructions?.includes('Table'))
             )
             .map(order => ({
               id: order.id,
@@ -60,15 +65,16 @@ const WaiterTables = () => {
               customerEmail: order.customerEmail || 'customer@email.com',
               customerPhone: order.customerPhone || '+91 98765 43210',
               tableNumber: order.tableNumber || 'T1',
-              peopleCount: order.peopleCount || order.specialInstructions?.match(/(\d+)\s+guests/i)?.[1] || 2,
-              timeSlot: order.timeSlot || '12:00-13:00',
-              bookingDate: order.orderDate || new Date().toISOString().split('T')[0],
-              status: 'BOOKED',
+              peopleCount: order.peopleCount || parseInt(order.specialInstructions?.match(/(\d+)\s+guests/i)?.[1]) || 2,
+              timeSlot: order.timeSlot || new Date(order.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              bookingDate: order.orderDate || new Date(order.createdAt).toISOString().split('T')[0],
+              status: order.status === 'COMPLETED' ? 'COMPLETED' : 'BOOKED',
               specialRequests: order.specialInstructions || 'Table booking',
               orderId: order.id // Link back to original order
             }))
           
           console.log('Bookings extracted from orders:', bookingsData.length)
+          console.log('Sample booking data:', bookingsData[0])
         }
       } catch (error) {
         console.log('Orders API failed, no booking data available')

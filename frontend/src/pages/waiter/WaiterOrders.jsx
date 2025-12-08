@@ -24,7 +24,7 @@ const WaiterOrders = () => {
     try {
       // Get bookings from orders (dine-in)
       const token = authService.getAdminToken()
-      const ordersResponse = await fetch('http://localhost:8080/api/orders', {
+      const ordersResponse = await fetch('http://localhost:8081/api/orders', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -61,7 +61,7 @@ const WaiterOrders = () => {
       // Use direct API call with admin token like WaiterDashboard
       const token = authService.getAdminToken()
       
-      const response = await fetch('http://localhost:8080/api/orders', {
+      const response = await fetch('http://localhost:8081/api/orders', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -145,7 +145,7 @@ const WaiterOrders = () => {
       // Use admin token for API call
       const token = authService.getAdminToken()
       
-      const response = await fetch(`http://localhost:8080/api/orders/${orderId}/status`, {
+      const response = await fetch(`http://localhost:8081/api/orders/${orderId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -178,7 +178,7 @@ const WaiterOrders = () => {
       // Use admin token for API call
       const token = authService.getAdminToken()
       
-      const response = await fetch(`http://localhost:8080/api/orders/${orderId}/status`, {
+      const response = await fetch(`http://localhost:8081/api/orders/${orderId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -225,7 +225,7 @@ const WaiterOrders = () => {
       
       console.log('Creating order with data:', backendOrderData)
       
-      const response = await fetch('http://localhost:8080/api/orders', {
+      const response = await fetch('http://localhost:8081/api/orders', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

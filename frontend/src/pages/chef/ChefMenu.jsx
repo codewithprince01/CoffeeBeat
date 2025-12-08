@@ -3,6 +3,8 @@ import { productService } from '../../services/productService'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 
 const ChefMenu = () => {
+  console.log('ChefMenu component mounted!')
+  
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -10,18 +12,20 @@ const ChefMenu = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showProductDetails, setShowProductDetails] = useState(false)
+  const [localStorageApplied, setLocalStorageApplied] = useState(false)
 
   useEffect(() => {
     fetchProducts()
   }, [])
 
   useEffect(() => {
-    if (products.length > 0) {
+    if (products.length > 0 && !localStorageApplied) {
       fetchCategories()
       // Apply localStorage changes after fetching
       applyLocalStorageChanges()
+      setLocalStorageApplied(true)
     }
-  }, [products])
+  }, [products, localStorageApplied])
 
   const resetFilters = () => {
     setSelectedCategory('all')
@@ -51,8 +55,16 @@ const ChefMenu = () => {
         return updatedProduct
       })
       
-      setProducts(updatedProducts)
-      console.log('Applied all localStorage changes to products')
+      // Only update if there are actual changes
+      const hasChanges = updatedProducts.some((product, index) => 
+        product.available !== products[index].available || 
+        product.stock !== products[index].stock
+      )
+      
+      if (hasChanges) {
+        setProducts(updatedProducts)
+        console.log('Applied all localStorage changes to products')
+      }
     } catch (error) {
       console.error('Failed to apply localStorage changes:', error)
     }
@@ -83,14 +95,13 @@ const ChefMenu = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      console.log('Fetching products from backend...')
       
       // Use direct API call with admin token like other pages
       let productsData = []
       
       try {
         const token = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiUk9MRV9BRE1JTiIsInN1YiI6ImFkbWluQGNvZmZlZS50ZXN0IiwiaWF0IjoxNzY0OTI0Njg4LCJleHAiOjE3NjUwMTEwODh9.ryI6K6caA5I-Fp4mtSYgZQ2OGtDN_IQG5nsT2yQ-2SY"
-        const response = await fetch('http://localhost:8080/api/products', {
+        const response = await fetch('http://localhost:8081/api/products', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -99,8 +110,21 @@ const ChefMenu = () => {
         
         if (response.ok) {
           const data = await response.json()
-          productsData = data.content || data || []
-          console.log('Products fetched successfully:', productsData.length)
+          
+          // Try different ways to extract products
+          if (Array.isArray(data)) {
+            productsData = data
+          } else if (data.content && Array.isArray(data.content)) {
+            productsData = data.content
+          } else if (data.data && Array.isArray(data.data)) {
+            productsData = data.data
+          } else if (data.products && Array.isArray(data.products)) {
+            productsData = data.products
+          } else {
+            // If it's an object, try to find any array property
+            const arrays = Object.values(data).filter(Array.isArray)
+            productsData = arrays.length > 0 ? arrays[0] : []
+          }
         } else {
           throw new Error(`HTTP ${response.status}`)
         }
@@ -111,7 +135,6 @@ const ChefMenu = () => {
       }
       
       setProducts(productsData)
-      console.log('Products set in state:', productsData.length)
     } catch (error) {
       console.error('Failed to fetch products:', error)
       setProducts([])
@@ -238,12 +261,12 @@ const ChefMenu = () => {
     }
   }
 
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = Array.isArray(products) ? products.filter(product => {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory
     const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesCategory && matchesSearch
-  })
+  }) : []
 
   const getStockStatus = (stock) => {
     if (stock === 0) return { color: 'bg-red-100 text-red-800', text: 'Out of Stock' }
@@ -322,7 +345,7 @@ const ChefMenu = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">In Stock</p>
               <p className="text-2xl font-bold text-gray-900">
-                {products.filter(p => p.stock > 5).length}
+                {Array.isArray(products) ? products.filter(p => p.stock > 5).length : 0}
               </p>
             </div>
           </div>
@@ -338,7 +361,7 @@ const ChefMenu = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Low Stock</p>
               <p className="text-2xl font-bold text-gray-900">
-                {products.filter(p => p.stock > 0 && p.stock <= 5).length}
+                {Array.isArray(products) ? products.filter(p => p.stock > 0 && p.stock <= 5).length : 0}
               </p>
             </div>
           </div>
@@ -354,7 +377,7 @@ const ChefMenu = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Out of Stock</p>
               <p className="text-2xl font-bold text-gray-900">
-                {products.filter(p => p.stock === 0).length}
+                {Array.isArray(products) ? products.filter(p => p.stock === 0).length : 0}
               </p>
             </div>
           </div>
@@ -397,19 +420,22 @@ const ChefMenu = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
-                          {product.imageUrl ? (
+                          {product.image || product.imageUrl ? (
                             <img
-                              src={product.imageUrl}
+                              src={product.image || product.imageUrl}
                               alt={product.name}
                               className="h-10 w-10 rounded-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                                e.target.nextSibling.style.display = 'flex'
+                              }}
                             />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                          )}
+                          ) : null}
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center" style={{display: (product.image || product.imageUrl) ? 'none' : 'flex'}}>
+                            <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
@@ -472,6 +498,24 @@ const ChefMenu = () => {
                   </tr>
                 )
               })}
+              {filteredProducts.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <svg className="h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      <p className="text-lg font-medium">No products found</p>
+                      <p className="text-sm mt-1">
+                        {selectedCategory !== 'all' || searchTerm ? 
+                          'Try adjusting your filters or search terms' : 
+                          'No products available in the system'
+                        }
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
