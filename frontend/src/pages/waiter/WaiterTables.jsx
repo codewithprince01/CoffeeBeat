@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { bookingService } from '../../services/bookingService'
 import { authService } from '../../services/authService'
-import toast from 'react-hot-toast'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import toast from 'react-hot-toast'
 
 const WaiterTables = () => {
   const [tables, setTables] = useState([])
@@ -171,75 +171,61 @@ const WaiterTables = () => {
 
   const handleCreateBooking = async (bookingData) => {
     try {
-      // Use admin token for API call
-      const token = authService.getAdminToken()
+      // Convert time slot to proper datetime format for backend (same as customer)
+      const getTimeSlotDateTime = (date, timeSlot) => {
+        const baseDate = new Date(date)
+        // Set to local time to avoid timezone issues
+        switch(timeSlot) {
+          case 'MORNING':
+            baseDate.setHours(9, 0, 0, 0) // 9:00 AM
+            break
+          case 'AFTERNOON':
+            baseDate.setHours(14, 0, 0, 0) // 2:00 PM
+            break
+          case 'EVENING':
+            baseDate.setHours(19, 0, 0, 0) // 7:00 PM
+            break
+          default:
+            baseDate.setHours(12, 0, 0, 0) // Default to noon
+        }
+        // Return in format backend expects (YYYY-MM-DDTHH:mm:ss)
+        const year = baseDate.getFullYear()
+        const month = String(baseDate.getMonth() + 1).padStart(2, '0')
+        const day = String(baseDate.getDate()).padStart(2, '0')
+        const hours = String(baseDate.getHours()).padStart(2, '0')
+        const minutes = String(baseDate.getMinutes()).padStart(2, '0')
+        const seconds = String(baseDate.getSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+      }
       
-      console.log('Creating booking with data:', bookingData)
-      console.log('Available tables:', tables)
-      console.log('Booking tableId:', bookingData.tableId)
-      
-      // Get table details
-      const table = tables.find(t => t.id === parseInt(bookingData.tableId))
-      const tableNumber = table?.number || 'T1'
-      
-      // Create proper booking object for Booking API
-      const bookingRequestData = {
-        userId: "6931bb3ad41b96691ca6ad27",
-        tableNumber: tableNumber,
-        peopleCount: bookingData.numberOfGuests,
-        timeSlot: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour in future
+      // Use the exact same data format as customer
+      const bookingServiceData = {
         customerName: bookingData.customerName,
         customerEmail: bookingData.customerEmail || null,
         customerPhone: bookingData.customerPhone || null,
+        tableNumber: tables.find(t => t.id === parseInt(bookingData.tableId))?.number || 'T1',
+        peopleCount: bookingData.numberOfGuests,
+        timeSlot: getTimeSlotDateTime(bookingData.bookingDate || new Date().toISOString().split('T')[0], 
+                                    bookingData.bookingTimeSlot || 'AFTERNOON'),
         specialRequests: bookingData.specialRequests || null,
-        status: 'BOOKED'
+        status: 'BOOKED',
+        userId: "6931bb3ad41b96691ca6ad27" // Use same userId as customer
       }
       
-      console.log('Creating booking with data:', bookingRequestData)
-      console.log('Sending request to:', 'http://localhost:8080/api/bookings')
+      console.log('Creating booking with data:', bookingServiceData)
       
-      // Use the proper bookings API endpoint
-      const response = await fetch('http://localhost:8080/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(bookingRequestData)
-      })
+      // Use bookingService which handles authentication properly (same as customer)
+      await bookingService.createBooking(bookingServiceData)
       
-      console.log('Response status:', response.status)
-      console.log('Response ok:', response.ok)
-      
-      if (response.ok) {
-        const result = await response.json()
-        console.log('Booking created successfully:', result)
-        fetchTablesAndBookings()
-        setShowBookingModal(false)
-        toast.success('Booking created successfully!')
-      } else {
-        const errorData = await response.json()
-        console.error('Booking creation failed:', errorData)
-        console.error('Status:', response.status)
-        console.error('Status Text:', response.statusText)
-        
-        // Show more detailed error message
-        let errorMessage = 'Failed to create booking'
-        if (errorData.message) {
-          errorMessage = errorData.message
-        } else if (errorData.error) {
-          errorMessage = errorData.error
-        }
-        
-        if (errorData.errors) {
-          const errorFields = Object.keys(errorData.errors)
-          errorMessage += `: ${errorFields.join(', ')}`
-        }
-        
-        toast.error(errorMessage)
-      }
+      toast.success('Booking created successfully!')
+      setShowBookingModal(false)
+      fetchTablesAndBookings()
     } catch (error) {
       console.error('Failed to create booking:', error)
+      console.error('Error response:', error.response?.data)
+      if (error.response?.data?.errors) {
+        console.error('Validation errors:', error.response.data.errors)
+      }
       toast.error('Failed to create booking. Please try again.')
     }
   }
