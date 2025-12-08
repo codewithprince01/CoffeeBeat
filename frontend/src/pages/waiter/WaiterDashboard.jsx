@@ -114,8 +114,8 @@ export const WaiterDashboard = () => {
         
         // Fetch bookings using the service
         console.log('Fetching bookings...')
-        const bookingsResponse = await bookingService.getAllBookings()
-        bookingsData = bookingsResponse || []
+        const bookingsResponse = await bookingService.getAllBookings({ size: 100, page: 0 })
+        bookingsData = bookingsResponse.content || bookingsResponse || []
         console.log('Bookings fetched:', bookingsData.length)
         
         // Process orders to add product names and customer names
