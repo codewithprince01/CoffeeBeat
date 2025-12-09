@@ -23,7 +23,7 @@ const CustomerBookings = () => {
     tableNumber: '',
     numberOfGuests: 2,
     bookingDate: '',
-    bookingTime: '',
+    bookingTimeSlot: '',
     specialRequests: ''
   })
 
@@ -325,10 +325,18 @@ const CustomerBookings = () => {
   const handleModifyBooking = (booking) => {
     setSelectedBooking(booking)
     
-    // Parse the timeSlot to get date and time
+    // Parse the timeSlot to get date
     const bookingDateTime = new Date(booking.timeSlot)
     const date = bookingDateTime.toISOString().split('T')[0]
-    const time = bookingDateTime.toTimeString().slice(0,5)
+    
+    // Determine time slot based on booking time
+    const hour = bookingDateTime.getHours()
+    let timeSlot = 'MORNING'
+    if (hour >= 12 && hour < 17) {
+      timeSlot = 'AFTERNOON'
+    } else if (hour >= 17) {
+      timeSlot = 'EVENING'
+    }
     
     // Find table ID from table number
     const tableId = tables.find(t => t.number === booking.tableNumber)?.id || ''
@@ -341,7 +349,7 @@ const CustomerBookings = () => {
       tableNumber: booking.tableNumber || '',
       numberOfGuests: booking.peopleCount || 2,
       bookingDate: date,
-      bookingTime: time,
+      bookingTimeSlot: timeSlot,
       specialRequests: booking.specialRequests || ''
     })
     setShowModifyModal(true)
@@ -351,8 +359,23 @@ const CustomerBookings = () => {
     if (!selectedBooking) return
 
     try {
-      // Combine date and time to create timeSlot
-      const timeSlot = `${modifyFormData.bookingDate}T${modifyFormData.bookingTime}:00`
+      // Create timeSlot based on bookingDate and bookingTimeSlot
+      let timeSlot = modifyFormData.bookingDate
+      
+      // Add appropriate time based on time slot
+      switch (modifyFormData.bookingTimeSlot) {
+        case 'MORNING':
+          timeSlot += 'T10:00:00' // 10:00 AM as default morning time
+          break
+        case 'AFTERNOON':
+          timeSlot += 'T14:00:00' // 2:00 PM as default afternoon time
+          break
+        case 'EVENING':
+          timeSlot += 'T19:00:00' // 7:00 PM as default evening time
+          break
+        default:
+          timeSlot += 'T12:00:00' // Default to noon
+      }
       
       const updateData = {
         id: selectedBooking.id,
@@ -927,14 +950,18 @@ return (
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Booking Time</label>
-              <input
-                type="time"
+              <label className="block text-sm font-medium text-gray-700">Time Slot</label>
+              <select
                 required
-                value={modifyFormData.bookingTime || new Date(modifyFormData.timeSlot).toTimeString().slice(0,5)}
-                onChange={(e) => setModifyFormData({ ...modifyFormData, bookingTime: e.target.value })}
+                value={modifyFormData.bookingTimeSlot || ''}
+                onChange={(e) => setModifyFormData({ ...modifyFormData, bookingTimeSlot: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              />
+              >
+                <option value="">Select a time slot</option>
+                <option value="MORNING">Morning (8:00 AM - 12:00 PM)</option>
+                <option value="AFTERNOON">Afternoon (12:00 PM - 5:00 PM)</option>
+                <option value="EVENING">Evening (5:00 PM - 10:00 PM)</option>
+              </select>
             </div>
 
             <div>
