@@ -260,22 +260,21 @@ export const CustomerDashboard = () => {
 
   const loadFavoritesFromStorage = () => {
     try {
-      // Get user-specific favorites key
-      const userKey = user ? `favorites_${user.email}` : 'favorites'
-      const savedFavorites = localStorage.getItem(userKey)
+      // Use the same key as MenuPage for consistency
+      const savedFavorites = localStorage.getItem('favorites')
       if (savedFavorites) {
-        const favoriteData = JSON.parse(savedFavorites)
+        const favoriteIds = JSON.parse(savedFavorites)
         
         // Check if stored data is old format (full objects) or new format (IDs only)
-        if (favoriteData.length > 0 && typeof favoriteData[0] === 'object' && favoriteData[0].id) {
-          // Full objects format - use directly
-          setFavorites(favoriteData)
-        } else if (favoriteData.length > 0 && typeof favoriteData[0] === 'string') {
-          // IDs format - need to fetch full product data
-          console.log('Favorites loaded as IDs, fetching product details...')
-          fetchFavoriteProducts(favoriteData)
+        if (favoriteIds.length > 0 && typeof favoriteIds[0] === 'object') {
+          // Old format - convert to new format and use directly
+          const ids = favoriteIds.map(fav => fav.id)
+          localStorage.setItem('favorites', JSON.stringify(ids))
+          setFavorites(favoriteIds)
         } else {
-          setFavorites([])
+          // New format - IDs only, need to fetch full product data
+          console.log('Favorites loaded as IDs, fetching product details...')
+          fetchFavoriteProducts(favoriteIds)
         }
       } else {
         setFavorites([])
@@ -332,8 +331,7 @@ export const CustomerDashboard = () => {
     try {
       // Store only product IDs to match MenuPage format
       const favoriteIds = favoritesData.map(fav => fav.id)
-      const userKey = user ? `favorites_${user.email}` : 'favorites'
-      localStorage.setItem(userKey, JSON.stringify(favoriteIds))
+      localStorage.setItem('favorites', JSON.stringify(favoriteIds))
     } catch (error) {
       console.error('Failed to save favorites to storage:', error)
     }
