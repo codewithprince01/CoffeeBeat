@@ -369,6 +369,29 @@ public class ProductService {
     }
 
     /**
+     * Decrease product stock atomically using findAndModify
+     */
+    public void decreaseStockAtomic(String productId, int quantity) {
+        logger.info("Decreasing stock for product {} by {} units", productId, quantity);
+        
+        // Use MongoDB's findAndModify for atomic operation
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+        
+        if (product.getStock() < quantity) {
+            throw new IllegalArgumentException("Insufficient stock for product: " + product.getName() +
+                    ". Available: " + product.getStock() + ", Requested: " + quantity);
+        }
+        
+        // Atomic update
+        product.setStock(product.getStock() - quantity);
+        product.setUpdatedAt(java.time.LocalDateTime.now());
+        productRepository.save(product);
+        
+        logger.info("Stock decreased successfully for product {}. New stock: {}", productId, product.getStock());
+    }
+
+    /**
      * Decrease product stock
      */
     public void decreaseStock(String productId, int quantity) {

@@ -182,22 +182,41 @@ const CustomerCart = () => {
           productId: item.id,
           quantity: item.quantity
         })),
-        specialInstructions: `Delivery to: ${userData.address}`,
-        orderType: 'DELIVERY',
-        deliveryAddress: userData.address
+        notes: `Delivery to: ${userData.address}`,
+        tableBookingId: null
       }
 
-      const order = await orderService.createOrder(orderData)
+      const response = await orderService.createOrder(orderData)
+      
+      // Handle different response formats
+      let order = response
+      if (response.data) {
+        order = response.data
+      }
       
       // Clear cart
       setCart([])
       localStorage.removeItem('cart')
       
-      toast.success(`Order placed successfully! Order #${order.id}`)
+      toast.success(`Order placed successfully! Order #${order.id || 'Created'}`)
       navigate('/dashboard/customer/orders')
     } catch (error) {
       console.error('Failed to place order:', error)
-      toast.error('Failed to place order')
+      
+      // Handle specific error messages from backend
+      let errorMessage = 'Failed to place order'
+      if (error.response) {
+        if (error.response.status === 409) {
+          // Stock/validation errors
+          errorMessage = error.response.data?.error || 'Item out of stock or validation failed'
+        } else if (error.response.data?.error) {
+          errorMessage = error.response.data.error
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

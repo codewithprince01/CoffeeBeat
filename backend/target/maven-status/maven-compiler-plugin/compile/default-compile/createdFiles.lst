@@ -44,12 +44,14 @@ com\coffeebeat\config\DataSeeder.class
 com\coffeebeat\dto\RegisterRequest.class
 com\coffeebeat\security\JwtAuthenticationFilter.class
 com\coffeebeat\controller\TestController.class
+com\coffeebeat\model\Booking$1.class
 com\coffeebeat\config\WebConfig.class
 com\coffeebeat\service\OrderService$1.class
 com\coffeebeat\repository\BookingRepository.class
 com\coffeebeat\exception\ResourceNotFoundException.class
 com\coffeebeat\config\SecurityConfig.class
 com\coffeebeat\dto\CreateProductRequest.class
+com\coffeebeat\model\Booking$TimeSlot.class
 com\coffeebeat\security\CustomUserDetailsService.class
 com\coffeebeat\CoffeeBeatApplication.class
 com\coffeebeat\service\OrderService.class

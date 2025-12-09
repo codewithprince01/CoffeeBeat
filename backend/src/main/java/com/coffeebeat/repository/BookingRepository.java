@@ -104,4 +104,16 @@ public interface BookingRepository extends MongoRepository<Booking, String> {
     @Query("{ 'tableNumber': ?0, 'timeSlot': { '$gte': ?1, '$lte': ?2 }, 'status': { '$in': ['BOOKED', 'CONFIRMED', 'RESERVED', 'OCCUPIED'] }, '_id': { '$ne': ?3 } }")
     List<Booking> findConflictingBookings(String tableNumber, LocalDateTime startTime, LocalDateTime endTime,
             String excludeBookingId);
+
+    /**
+     * Check if table is already booked for specific date and slot
+     */
+    @Query("{ 'tableNumber': ?0, 'bookingDate': ?1, 'slot': ?2, 'status': { '$in': ['BOOKED', 'CONFIRMED', 'RESERVED', 'OCCUPIED'] } }")
+    Optional<Booking> findActiveBookingForTableDateAndSlot(String tableNumber, LocalDateTime bookingDate, Booking.TimeSlot slot);
+
+    /**
+     * Check if table is already booked for specific date and slot (excluding current booking)
+     */
+    @Query("{ 'tableNumber': ?0, 'bookingDate': ?1, 'slot': ?2, 'status': { '$in': ['BOOKED', 'CONFIRMED', 'RESERVED', 'OCCUPIED'] }, '_id': { '$ne': ?3 } }")
+    Optional<Booking> findActiveBookingForTableDateAndSlotExcluding(String tableNumber, LocalDateTime bookingDate, Booking.TimeSlot slot, String excludeBookingId);
 }

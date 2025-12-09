@@ -33,43 +33,34 @@ public class OrderController {
      * Create a new order
      */
     @PostMapping
-    public ResponseEntity<Order> createOrder(
-            @jakarta.validation.Valid @RequestBody com.coffeebeat.dto.CreateOrderRequest orderRequest,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        try {
-            logger.info("Received order creation request for user: {}",
-                    userDetails != null ? userDetails.getUsername() : "anonymous");
+public ResponseEntity<?> createOrder(
+        @jakarta.validation.Valid @RequestBody com.coffeebeat.dto.CreateOrderRequest orderRequest,
+        @AuthenticationPrincipal UserDetails userDetails) {
+    try {
+        logger.info("Received order creation request for user: {}",
+                userDetails != null ? userDetails.getUsername() : "anonymous");
 
-            String userId = "anonymous";
-            if (userDetails != null) {
-                // We need the actual ID, but userDetails only has username (email).
-                // The service handles looking up user by email or we pass email.
-                // Current service expects userId string.
-                // Let's modify controller to pass email and let service resolve ID?
-                // Or resolve it here.
-                // Service `createOrder(Order order, String userId)` takes ID.
-                // Let's resolve ID validation inside service or fetch it here.
-                // Better: Update service to accept email or resolved user.
-                // For now, let's assume we can get it from service or repo.
-                // But wait, `populateCustomerName` uses Repository.
-
-                // Let's pass the email to a new/overloaded createOrder method in Service?
-                // Or fetch User here.
-                userId = userDetails.getUsername(); // This is email usually in Spring Security defaults if we set it
-                                                    // so.
-                // Actually `userDetails.getUsername()` returns what we set as subject.
-                // In `CustomUserDetailsService` (if we had one), we'd know.
-                // Based on `JwtUtil` viewed earlier, subject is email.
-            }
-
-            Order createdOrder = orderService.createOrderFromDto(orderRequest, userId);
-            logger.info("Order created successfully with ID: {}", createdOrder.getId());
-            return ResponseEntity.ok(createdOrder);
-        } catch (Exception e) {
-            logger.error("Create order failed: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+        String userId = "anonymous";
+        if (userDetails != null) {
+            userId = userDetails.getUsername();
         }
+
+        Order createdOrder = orderService.createOrderFromDto(orderRequest, userId);
+        logger.info("Order created successfully with ID: {}", createdOrder.getId());
+        return ResponseEntity.status(201).body(createdOrder);
+    } catch (IllegalArgumentException e) {
+        logger.error("Order validation failed: {}", e.getMessage());
+        // Return 409 Conflict for stock issues and validation errors
+        if (e.getMessage().contains("Insufficient stock") || e.getMessage().contains("Out of stock") || 
+            e.getMessage().contains("Product not found") || e.getMessage().contains("inactive")) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        }
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    } catch (Exception e) {
+        logger.error("Create order failed: {}", e.getMessage(), e);
+        return ResponseEntity.internalServerError().body(Map.of("error", "Failed to create order"));
     }
+}
 
     /**
      * Get order by ID

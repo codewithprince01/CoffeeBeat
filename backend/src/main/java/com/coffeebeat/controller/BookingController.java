@@ -56,7 +56,7 @@ public class BookingController {
     }
 
     @PostMapping
-    public ResponseEntity<Booking> createBooking(
+    public ResponseEntity<?> createBooking(
             @Valid @RequestBody com.coffeebeat.dto.CreateBookingRequest bookingRequest,
             @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
         try {
@@ -81,7 +81,7 @@ public class BookingController {
             if (userDetails != null) {
                 userEmail = userDetails.getUsername();
                 Booking createdBooking = bookingService.createBooking(booking, userEmail);
-                return ResponseEntity.ok(createdBooking);
+                return ResponseEntity.status(201).body(createdBooking);
             } else {
                 // Allow anonymous bookings if we have contact info?
                 // For now, require auth as per requirement "Full code cleanup: Validation" and
@@ -90,11 +90,18 @@ public class BookingController {
                 // Assuming login required for now based on "User Module" focus.
                 // Actually, let's allow it but we need a way to track.
                 // Better to enforce auth for consistency with "User Module" tasks.
-                return ResponseEntity.status(401).build();
+                return ResponseEntity.status(401).body(Map.of("error", "Authentication required"));
             }
+        } catch (IllegalArgumentException e) {
+            logger.error("Booking validation failed: {}", e.getMessage());
+            // Return 409 Conflict for uniqueness/validation errors
+            if (e.getMessage().contains("already booked") || e.getMessage().contains("User not found")) {
+                return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            logger.error("Create booking failed: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            logger.error("Create booking failed: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to create booking"));
         }
     }
 

@@ -50,18 +50,20 @@ public class OrderService {
     @Autowired
     private NotificationService notificationService;
 
+    @Transactional
     public Order createOrder(Order order, String userId) {
         logger.info("Creating order for userId: {} with {} items", userId,
                 order.getItems() != null ? order.getItems().size() : 0);
         order.setUserId(userId);
 
-        // Validate items and stock
-        validateOrderItems(order.getItems());
+        // Validate items and stock atomically
+        validateOrderItemsAtomic(order.getItems());
 
-        // Decrease stock
+        // Decrease stock atomically
         if (order.getItems() != null) {
             for (Order.OrderItem item : order.getItems()) {
-                productService.decreaseStock(item.getProductId(), item.getQuantity());
+                // Use atomic stock decrease
+                productService.decreaseStockAtomic(item.getProductId(), item.getQuantity());
             }
         }
 
@@ -471,9 +473,9 @@ public class OrderService {
     }
 
     /**
-     * Validate order items and stock
+     * Validate order items and stock atomically
      */
-    private void validateOrderItems(List<Order.OrderItem> items) {
+    private void validateOrderItemsAtomic(List<Order.OrderItem> items) {
         // Skip validation for table bookings (empty items allowed)
         if (items == null || items.isEmpty()) {
             return;
@@ -485,16 +487,30 @@ public class OrderService {
                 throw new IllegalArgumentException("Product not found or inactive: " + item.getProductId());
             }
 
-            // Check stock
-            Optional<Product> productOpt = productRepository.findById(item.getProductId());
-            if (productOpt.isPresent()) {
-                Product product = productOpt.get();
-                if (product.getStock() < item.getQuantity()) {
-                    throw new IllegalArgumentException("Insufficient stock for product: " + product.getName() +
-                            ". Available: " + product.getStock() + ", Requested: " + item.getQuantity());
-                }
+            // Check stock atomically
+            Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + item.getProductId()));
+
+            if (!product.isActive()) {
+                throw new IllegalArgumentException("Product is inactive: " + product.getName());
+            }
+
+            if (product.getStock() <= 0) {
+                throw new IllegalArgumentException("Out of stock for product: " + product.getName());
+            }
+
+            if (product.getStock() < item.getQuantity()) {
+                throw new IllegalArgumentException("Insufficient stock for product: " + product.getName() +
+                        ". Available: " + product.getStock() + ", Requested: " + item.getQuantity());
             }
         }
+    }
+
+    /**
+     * Validate order items and stock (legacy method)
+     */
+    private void validateOrderItems(List<Order.OrderItem> items) {
+        validateOrderItemsAtomic(items);
     }
 
     /**

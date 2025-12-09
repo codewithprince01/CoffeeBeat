@@ -43,6 +43,9 @@ public class Product {
     @Positive(message = "Stock must be positive")
     private Integer stock;
 
+    // Stock threshold for low stock warnings (default: 5)
+    private Integer stockThreshold = 5;
+
     private String imageUrl;
 
     // Cloudinary specific fields
@@ -98,6 +101,14 @@ public class Product {
     // Business logic methods
     public boolean isInStock() {
         return stock > 0 && isActive;
+    }
+
+    public boolean isLowStock() {
+        return stock > 0 && stock <= stockThreshold && isActive;
+    }
+
+    public boolean isOutOfStock() {
+        return stock <= 0 || !isActive;
     }
 
     public void decreaseStock(int quantity) {
@@ -156,6 +167,15 @@ public class Product {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public Integer getStockThreshold() {
+        return stockThreshold;
+    }
+
+    public void setStockThreshold(Integer stockThreshold) {
+        this.stockThreshold = stockThreshold;
         this.updatedAt = LocalDateTime.now();
     }
 

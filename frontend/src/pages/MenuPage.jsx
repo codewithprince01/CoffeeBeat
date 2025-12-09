@@ -410,6 +410,17 @@ export const MenuPage = () => {
   })
 
   const addToCart = (product, quantity = 1) => {
+    // Check if product is out of stock
+    if (product.isOutOfStock || product.stock === 0) {
+      toast.error(`${product.name} is out of stock`)
+      return
+    }
+
+    // Check if product has low stock
+    if (product.isLowStock || (product.stockThreshold && product.stock <= product.stockThreshold)) {
+      toast(`Only ${product.stock} left in stock!`)
+    }
+
     if (!isAuthenticated) {
       // Show normal toast message and redirect immediately
       toast('Please login first')
@@ -424,26 +435,25 @@ export const MenuPage = () => {
 
     if (existingItem) {
       const newQuantity = existingItem.quantity + quantity
+      
+      // Check if adding would exceed available stock
       if (newQuantity > product.stock) {
-        toast.error(`Only ${product.stock} items available in stock`)
+        toast.error(`Only ${product.stock} available in stock`)
         return
       }
+      
       newCart = cart.map(item =>
         item.id === product.id
           ? { ...item, quantity: newQuantity }
           : item
       )
     } else {
-      if (quantity > product.stock) {
-        toast.error(`Only ${product.stock} items available in stock`)
-        return
-      }
       newCart = [...cart, { ...product, quantity }]
     }
 
     setCart(newCart)
     saveCartToStorage(newCart)
-    toast.success(`${product.name} added to cart`)
+    toast.success(`${product.name} added to cart!`)
   }
 
   const updateQuantity = (productId, newQuantity) => {
@@ -708,9 +718,19 @@ export const MenuPage = () => {
                       <Heart className={`h-4 w-4 ${isFavorite(product.id) ? 'fill-current' : ''}`} />
                     </button>
                     <div className="absolute bottom-3 left-3">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500 text-white shadow-lg">
-                        In Stock ({product.stock})
-                      </span>
+                      {product.isOutOfStock || product.stock === 0 ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white shadow-lg">
+                          Out of Stock
+                        </span>
+                      ) : product.isLowStock || (product.stockThreshold && product.stock <= product.stockThreshold) ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-500 text-white shadow-lg">
+                          Low Stock ({product.stock})
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500 text-white shadow-lg">
+                          In Stock ({product.stock})
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -733,10 +753,11 @@ export const MenuPage = () => {
 
                     <button
                       onClick={() => addToCart(product)}
-                      disabled={product.stock === 0}
+                      disabled={product.isOutOfStock || product.stock === 0}
                       className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                      aria-label={product.isOutOfStock || product.stock === 0 ? `${product.name} is out of stock` : `Add ${product.name} to cart`}
                     >
-                      {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                      {product.isOutOfStock || product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
                     </button>
                   </div>
                 </div>

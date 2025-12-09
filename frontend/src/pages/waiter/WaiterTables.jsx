@@ -59,19 +59,65 @@ const WaiterTables = () => {
                order.specialInstructions?.includes('Booking') ||
                order.specialInstructions?.includes('Table'))
             )
-            .map(order => ({
-              id: order.id,
-              customerName: order.customerName || `Customer ${order.userId?.slice(-8)}`,
-              customerEmail: order.customerEmail || 'customer@email.com',
-              customerPhone: order.customerPhone || '+91 98765 43210',
-              tableNumber: order.tableNumber || 'T1',
-              peopleCount: order.peopleCount || parseInt(order.specialInstructions?.match(/(\d+)\s+guests/i)?.[1]) || 2,
-              timeSlot: order.timeSlot || new Date(order.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-              bookingDate: order.orderDate || new Date(order.createdAt).toISOString().split('T')[0],
-              status: order.status === 'COMPLETED' ? 'COMPLETED' : 'BOOKED',
-              specialRequests: order.specialInstructions || 'Table booking',
-              orderId: order.id // Link back to original order
-            }))
+            .map(order => {
+              // Extract people count more reliably
+              let peopleCount = 2
+              if (order.peopleCount) {
+                peopleCount = order.peopleCount
+              } else if (order.specialInstructions) {
+                const match = order.specialInstructions.match(/(\d+)\s*(guests|people|persons)/i)
+                if (match) peopleCount = parseInt(match[1])
+              }
+              
+              // Format time slot for human readability
+              let timeSlotDisplay = 'Not specified'
+              if (order.timeSlot) {
+                const timeSlotDate = new Date(order.timeSlot)
+                timeSlotDisplay = timeSlotDate.toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit',
+                  hour12: true 
+                })
+              } else if (order.createdAt) {
+                const createdDate = new Date(order.createdAt)
+                timeSlotDisplay = createdDate.toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit',
+                  hour12: true 
+                })
+              }
+              
+              // Determine booking status
+              let status = 'BOOKED'
+              if (order.status === 'COMPLETED' || order.status === 'SERVED') {
+                status = 'COMPLETED'
+              } else if (order.status === 'CANCELLED') {
+                status = 'CANCELLED'
+              } else if (order.status === 'PREPARING' || order.status === 'READY_FOR_SERVICE') {
+                status = 'OCCUPIED'
+              }
+              
+              return {
+                id: order.id,
+                customerName: order.customerName || `Guest ${order.userId?.slice(-8).toUpperCase()}`,
+                customerEmail: order.customerEmail || 'guest@email.com',
+                customerPhone: order.customerPhone || '+91 98765 43210',
+                tableNumber: order.tableNumber || 'T1',
+                peopleCount: peopleCount,
+                timeSlot: order.timeSlot || new Date(order.createdAt).toISOString(),
+                timeSlotDisplay: timeSlotDisplay,
+                bookingDate: order.orderDate || new Date(order.createdAt).toISOString().split('T')[0],
+                bookingDateDisplay: new Date(order.orderDate || order.createdAt).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric'
+                }),
+                status: status,
+                specialRequests: order.specialInstructions || 'Table booking',
+                orderId: order.id,
+                createdAt: order.createdAt
+              }
+            })
           
           console.log('Bookings extracted from orders:', bookingsData.length)
           console.log('Sample booking data:', bookingsData[0])
@@ -103,6 +149,14 @@ const WaiterTables = () => {
       setTables(tablesData)
       setBookings(bookingsData)
       console.log('Final bookings loaded:', bookingsData.length)
+      
+      // Debug: Log all table statuses after setting state
+      setTimeout(() => {
+        tablesData.forEach(table => {
+          const status = getTableStatus(table.id)
+          console.log(`Table ${table.number} status:`, status.status, 'Booking:', status.booking?.id)
+        })
+      }, 100)
       
     } catch (error) {
       console.error('Failed to load tables and bookings:', error)
@@ -230,10 +284,27 @@ const WaiterTables = () => {
     } catch (error) {
       console.error('Failed to create booking:', error)
       console.error('Error response:', error.response?.data)
-      if (error.response?.data?.errors) {
-        console.error('Validation errors:', error.response.data.errors)
+      
+      let errorMessage = 'Failed to create booking. Please try again.'
+      
+      // Handle specific error cases
+      if (error.response?.status === 409) {
+        // Conflict error - likely duplicate booking
+        const backendError = error.response.data?.error
+        if (backendError && backendError.includes('already booked')) {
+          errorMessage = `This table is already booked at that date and time. Please choose a different table or time.`
+        } else if (backendError) {
+          errorMessage = backendError
+        }
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
       }
-      toast.error('Failed to create booking. Please try again.')
+      
+      toast.error(errorMessage)
     }
   }
 
@@ -249,51 +320,79 @@ const WaiterTables = () => {
     
     if (tableBooking) {
       const now = new Date()
-      const bookingDate = new Date(tableBooking.bookingDate)
-      const timeSlot = tableBooking.timeSlot
-      
-      // Get time slot ranges
-      const getTimeSlotRange = (slot) => {
-        switch(slot) {
-          case 'MORNING': return { start: 8, end: 12 } // 8 AM - 12 PM
-          case 'AFTERNOON': return { start: 12, end: 17 } // 12 PM - 5 PM
-          case 'EVENING': return { start: 17, end: 22 } // 5 PM - 10 PM
-          default: return { start: 0, end: 24 }
-        }
-      }
-      
-      const slotRange = getTimeSlotRange(timeSlot)
-      const bookingStartTime = new Date(bookingDate)
-      bookingStartTime.setHours(slotRange.start, 0, 0, 0)
-      const bookingEndTime = new Date(bookingDate)
-      bookingEndTime.setHours(slotRange.end, 0, 0, 0)
+      const bookingDate = new Date(tableBooking.timeSlot || tableBooking.bookingDate || tableBooking.createdAt)
       
       console.log(`Table ${tableNumber} has booking:`, tableBooking)
-      console.log(`Booking date:`, bookingDate, `Time slot:`, timeSlot)
-      console.log(`Booking start:`, bookingStartTime, `Booking end:`, bookingEndTime, `Current time:`, now)
+      console.log(`Booking date:`, bookingDate, `Current time:`, now)
+      console.log(`Booking status:`, tableBooking.status)
       
-      // If current time is before booking time slot, show as RESERVED
-      if (now < bookingStartTime) {
-        return {
-          status: 'RESERVED',
-          booking: tableBooking,
-          color: 'bg-yellow-500',
-          textColor: 'text-white'
+      // Check if booking is in active state
+      const isActiveBooking = tableBooking.status === 'OCCUPIED' || 
+                             tableBooking.status === 'BOOKED' ||
+                             tableBooking.status === 'CONFIRMED' ||
+                             tableBooking.status === 'RESERVED'
+      
+      // Check if booking is for today
+      const today = new Date()
+      const isBookingToday = bookingDate.toDateString() === today.toDateString()
+      
+      if (isActiveBooking && isBookingToday) {
+        // Get time slot from booking hour
+        const bookingHour = bookingDate.getHours()
+        let timeSlot = 'UNKNOWN'
+        if (bookingHour >= 8 && bookingHour < 12) {
+          timeSlot = 'MORNING'  // 8 AM - 12 PM
+        } else if (bookingHour >= 12 && bookingHour < 17) {
+          timeSlot = 'AFTERNOON' // 12 PM - 5 PM  
+        } else if (bookingHour >= 17 && bookingHour < 22) {
+          timeSlot = 'EVENING'   // 5 PM - 10 PM
         }
-      }
-      
-      // If current time is within booking time slot, show as OCCUPIED
-      if (now >= bookingStartTime && now < bookingEndTime) {
-        return {
-          status: 'OCCUPIED',
-          booking: tableBooking,
-          color: 'bg-red-500',
-          textColor: 'text-white'
+        
+        // Get time slot ranges
+        const getTimeSlotRange = (slot) => {
+          switch(slot) {
+            case 'MORNING': return { start: 8, end: 12 }   // 8 AM - 12 PM
+            case 'AFTERNOON': return { start: 12, end: 17 }  // 12 PM - 5 PM
+            case 'EVENING': return { start: 17, end: 22 }    // 5 PM - 10 PM
+            default: return { start: 0, end: 24 }
+          }
         }
+        
+        const slotRange = getTimeSlotRange(timeSlot)
+        const bookingStartTime = new Date(bookingDate)
+        bookingStartTime.setHours(slotRange.start, 0, 0, 0)
+        const bookingEndTime = new Date(bookingDate)
+        bookingEndTime.setHours(slotRange.end, 0, 0, 0)
+        
+        console.log(`Time slot: ${timeSlot}, Start: ${bookingStartTime}, End: ${bookingEndTime}, Now: ${now}`)
+        
+        // If current time is before booking time slot, show as RESERVED
+        if (now < bookingStartTime) {
+          console.log(`Table ${tableNumber} is RESERVED (booking for later today)`)
+          return {
+            status: 'RESERVED',
+            booking: tableBooking,
+            color: 'bg-yellow-500',
+            textColor: 'text-white'
+          }
+        }
+        
+        // If current time is within booking time slot, show as OCCUPIED
+        if (now >= bookingStartTime && now < bookingEndTime) {
+          console.log(`Table ${tableNumber} is OCCUPIED (booking time is now)`)
+          return {
+            status: 'OCCUPIED',
+            booking: tableBooking,
+            color: 'bg-red-500',
+            textColor: 'text-white'
+          }
+        }
+        
+        // If current time is after booking time slot but still today, table is AVAILABLE
+        console.log(`Table ${tableNumber} booking time has passed, table is available`)
+      } else {
+        console.log(`Table ${tableNumber} booking is not active or not for today`)
       }
-      
-      // If current time is after booking time slot, table is AVAILABLE
-      console.log(`Table ${tableNumber} booking time slot has ended, table is available`)
     }
     
     console.log(`Table ${tableNumber} is available`)
@@ -482,8 +581,16 @@ const WaiterTables = () => {
                             </span>
                           </div>
                           {tableStatus.booking && (
-                            <div className="mt-2 text-xs text-gray-500">
-                              {tableStatus.booking.customerName}
+                            <div className="mt-2 space-y-1">
+                              <div className="text-xs text-gray-500 truncate">
+                                {tableStatus.booking.customerName}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {tableStatus.booking.timeSlotDisplay}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {tableStatus.booking.peopleCount} guests
+                              </div>
                             </div>
                           )}
                         </div>
@@ -509,6 +616,8 @@ const WaiterTables = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Guest</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guests</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -533,6 +642,12 @@ const WaiterTables = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {tableStatus.booking ? tableStatus.booking.customerName : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {tableStatus.booking ? tableStatus.booking.timeSlotDisplay : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {tableStatus.booking ? `${tableStatus.booking.peopleCount} guests` : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
@@ -653,29 +768,22 @@ const WaiterTables = () => {
                     </div>
                     <div>
                       <span className="text-sm text-gray-500">Guests:</span>
-                      <span className="ml-2 text-sm text-gray-900">{selectedTable.booking.numberOfGuests}</span>
+                      <span className="ml-2 text-sm text-gray-900">{selectedTable.booking.peopleCount} guests</span>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">Date:</span>
+                      <span className="ml-2 text-sm text-gray-900">{selectedTable.booking.bookingDateDisplay || 'Today'}</span>
                     </div>
                     <div>
                       <span className="text-sm text-gray-500">Time:</span>
-                      <span className="ml-2 text-sm text-gray-900">
-                        {(() => {
-                          const bookingDate = selectedTable.booking.timeSlot || selectedTable.booking.bookingDate
-                          if (!bookingDate) return 'N/A'
-                          try {
-                            const date = new Date(bookingDate)
-                            if (isNaN(date.getTime())) {
-                              // If invalid date, try to parse the string manually
-                              return bookingDate.includes('T') ? 
-                                new Date(bookingDate).toLocaleString() : 
-                                new Date(bookingDate + 'T12:00:00').toLocaleString()
-                            }
-                            return date.toLocaleString()
-                          } catch (error) {
-                            return bookingDate // Return raw string if parsing fails
-                          }
-                        })()}
-                      </span>
+                      <span className="ml-2 text-sm text-gray-900">{selectedTable.booking.timeSlotDisplay || 'Not specified'}</span>
                     </div>
+                    {selectedTable.booking.specialRequests && (
+                      <div>
+                        <span className="text-sm text-gray-500">Special Requests:</span>
+                        <span className="ml-2 text-sm text-gray-900">{selectedTable.booking.specialRequests}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

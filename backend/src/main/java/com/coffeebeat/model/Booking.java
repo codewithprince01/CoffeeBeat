@@ -48,6 +48,43 @@ public class Booking {
         }
     }
 
+    public enum TimeSlot {
+        MORNING("MORNING"),
+        AFTERNOON("AFTERNOON"), 
+        EVENING("EVENING");
+
+        private final String slot;
+
+        TimeSlot(String slot) {
+            this.slot = slot;
+        }
+
+        public String getSlot() {
+            return slot;
+        }
+
+        public static TimeSlot fromString(String slot) {
+            for (TimeSlot ts : TimeSlot.values()) {
+                if (ts.slot.equalsIgnoreCase(slot)) {
+                    return ts;
+                }
+            }
+            throw new IllegalArgumentException("Unknown time slot: " + slot);
+        }
+
+        // Helper method to get slot from LocalDateTime
+        public static TimeSlot fromDateTime(LocalDateTime dateTime) {
+            int hour = dateTime.getHour();
+            if (hour < 12) {
+                return MORNING;
+            } else if (hour < 17) {
+                return AFTERNOON;
+            } else {
+                return EVENING;
+            }
+        }
+    }
+
     @Id
     private String id;
 
@@ -64,6 +101,13 @@ public class Booking {
 
     @NotNull(message = "Time slot is required")
     private LocalDateTime timeSlot;
+
+    // New fields for better slot management
+    @NotNull(message = "Booking date is required")
+    private LocalDateTime bookingDate; // Date part of timeSlot for easier querying
+
+    @NotNull(message = "Time slot is required")
+    private TimeSlot slot; // Enum for MORNING, AFTERNOON, EVENING
 
     @NotNull(message = "Status is required")
     private BookingStatus status = BookingStatus.BOOKED;
@@ -89,6 +133,31 @@ public class Booking {
         this.tableNumber = tableNumber;
         this.peopleCount = peopleCount;
         this.timeSlot = timeSlot;
+        // Set derived fields
+        this.bookingDate = timeSlot.toLocalDate().atStartOfDay();
+        this.slot = TimeSlot.fromDateTime(timeSlot);
+    }
+
+    // Constructor with date and slot enum
+    public Booking(String userId, String tableNumber, Integer peopleCount, LocalDateTime bookingDate, TimeSlot slot) {
+        this();
+        this.userId = userId;
+        this.tableNumber = tableNumber;
+        this.peopleCount = peopleCount;
+        this.bookingDate = bookingDate;
+        this.slot = slot;
+        // Set timeSlot based on date and slot enum
+        switch (slot) {
+            case MORNING:
+                this.timeSlot = bookingDate.plusHours(10); // 10:00 AM
+                break;
+            case AFTERNOON:
+                this.timeSlot = bookingDate.plusHours(14); // 2:00 PM
+                break;
+            case EVENING:
+                this.timeSlot = bookingDate.plusHours(19); // 7:00 PM
+                break;
+        }
     }
 
     // Pre-update method
@@ -168,6 +237,41 @@ public class Booking {
 
     public void setTimeSlot(LocalDateTime timeSlot) {
         this.timeSlot = timeSlot;
+        // Update derived fields
+        this.bookingDate = timeSlot.toLocalDate().atStartOfDay();
+        this.slot = TimeSlot.fromDateTime(timeSlot);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public LocalDateTime getBookingDate() {
+        return bookingDate;
+    }
+
+    public void setBookingDate(LocalDateTime bookingDate) {
+        this.bookingDate = bookingDate;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public TimeSlot getSlot() {
+        return slot;
+    }
+
+    public void setSlot(TimeSlot slot) {
+        this.slot = slot;
+        // Update timeSlot based on new slot and existing date
+        if (bookingDate != null) {
+            switch (slot) {
+                case MORNING:
+                    this.timeSlot = bookingDate.plusHours(10); // 10:00 AM
+                    break;
+                case AFTERNOON:
+                    this.timeSlot = bookingDate.plusHours(14); // 2:00 PM
+                    break;
+                case EVENING:
+                    this.timeSlot = bookingDate.plusHours(19); // 7:00 PM
+                    break;
+            }
+        }
         this.updatedAt = LocalDateTime.now();
     }
 

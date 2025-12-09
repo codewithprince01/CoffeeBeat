@@ -314,10 +314,26 @@ const CustomerBookings = () => {
     } catch (error) {
       console.error('Failed to create booking:', error)
       console.error('Error response:', error.response?.data)
-      if (error.response?.data?.errors) {
-        console.error('Validation errors:', error.response.data.errors)
+      
+      let errorMessage = 'Failed to create booking. Please try again.'
+      
+      // Handle specific error cases
+      if (error.response?.status === 409) {
+        // Conflict error - likely duplicate booking
+        const backendError = error.response.data?.error
+        if (backendError && backendError.includes('already booked')) {
+          errorMessage = `This table is already booked at that date and time. Please choose a different table or time.`
+        } else if (backendError) {
+          errorMessage = backendError
+        }
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
       }
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create booking'
+      
       toast.error(errorMessage)
     }
   }
@@ -397,7 +413,28 @@ const CustomerBookings = () => {
       fetchBookings()
     } catch (error) {
       console.error('Failed to update booking:', error)
-      toast.error('Failed to update booking. Please try again.')
+      console.error('Error response:', error.response?.data)
+      
+      let errorMessage = 'Failed to update booking. Please try again.'
+      
+      // Handle specific error cases
+      if (error.response?.status === 409) {
+        // Conflict error - likely duplicate booking
+        const backendError = error.response.data?.error
+        if (backendError && backendError.includes('already booked')) {
+          errorMessage = `This table is already booked at that date and time. Please choose a different table or time.`
+        } else if (backendError) {
+          errorMessage = backendError
+        }
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
     }
   }
 

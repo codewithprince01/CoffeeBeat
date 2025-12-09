@@ -62,6 +62,10 @@ public class ProductController {
                     productMap.put("slug", product.getSlug());
                     productMap.put("price", product.getPrice());
                     productMap.put("stock", product.getStock());
+                    productMap.put("stockThreshold", product.getStockThreshold());
+                    productMap.put("isLowStock", product.isLowStock());
+                    productMap.put("isOutOfStock", product.isOutOfStock());
+                    productMap.put("isInStock", product.isInStock());
                     productMap.put("category", product.getCategory());
                     productMap.put("description", product.getDescription());
                     productMap.put("isActive", product.isActive());

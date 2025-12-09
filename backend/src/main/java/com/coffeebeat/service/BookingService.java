@@ -117,15 +117,23 @@ public class BookingService {
         // Validate booking
         validateBooking(booking);
 
+        // Ensure bookingDate and slot are set
+        if (booking.getBookingDate() == null) {
+            booking.setBookingDate(booking.getTimeSlot().toLocalDate().atStartOfDay());
+        }
+        if (booking.getSlot() == null) {
+            booking.setSlot(Booking.TimeSlot.fromDateTime(booking.getTimeSlot()));
+        }
+
         // Check if time slot is in the future
         if (booking.getTimeSlot().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Time slot must be in the future");
         }
 
-        // Check table availability
-        if (!isTableAvailable(booking.getTableNumber(), booking.getTimeSlot())) {
+        // Check table availability using new date/slot validation
+        if (!isTableAvailableForDateAndSlot(booking.getTableNumber(), booking.getBookingDate(), booking.getSlot())) {
             throw new IllegalArgumentException("Table " + booking.getTableNumber() +
-                    " is already booked at " + booking.getTimeSlot());
+                    " is already booked for " + booking.getSlot().getSlot() + " on " + booking.getBookingDate().toLocalDate());
         }
 
         // Set default status
@@ -258,10 +266,18 @@ public class BookingService {
         // Re-validate booking
         validateBooking(existingBooking);
 
-        // Check table availability (exclude current booking)
-        if (!isTableAvailableForUpdate(existingBooking.getTableNumber(), existingBooking.getTimeSlot(), id)) {
+        // Ensure bookingDate and slot are set
+        if (existingBooking.getBookingDate() == null) {
+            existingBooking.setBookingDate(existingBooking.getTimeSlot().toLocalDate().atStartOfDay());
+        }
+        if (existingBooking.getSlot() == null) {
+            existingBooking.setSlot(Booking.TimeSlot.fromDateTime(existingBooking.getTimeSlot()));
+        }
+
+        // Check table availability using new date/slot validation (exclude current booking)
+        if (!isTableAvailableForDateAndSlotExcluding(existingBooking.getTableNumber(), existingBooking.getBookingDate(), existingBooking.getSlot(), id)) {
             throw new IllegalArgumentException("Table " + existingBooking.getTableNumber() +
-                    " is already booked at " + existingBooking.getTimeSlot());
+                    " is already booked for " + existingBooking.getSlot().getSlot() + " on " + existingBooking.getBookingDate().toLocalDate());
         }
 
         Booking updatedBooking = bookingRepository.save(existingBooking);
@@ -322,7 +338,23 @@ public class BookingService {
     }
 
     /**
-     * Check table availability
+     * Check table availability for specific date and slot
+     */
+    public boolean isTableAvailableForDateAndSlot(String tableNumber, LocalDateTime bookingDate, Booking.TimeSlot slot) {
+        Optional<Booking> existingBooking = bookingRepository.findActiveBookingForTableDateAndSlot(tableNumber, bookingDate, slot);
+        return existingBooking.isEmpty();
+    }
+
+    /**
+     * Check table availability for specific date and slot (excluding current booking)
+     */
+    public boolean isTableAvailableForDateAndSlotExcluding(String tableNumber, LocalDateTime bookingDate, Booking.TimeSlot slot, String excludeBookingId) {
+        Optional<Booking> existingBooking = bookingRepository.findActiveBookingForTableDateAndSlotExcluding(tableNumber, bookingDate, slot, excludeBookingId);
+        return existingBooking.isEmpty();
+    }
+
+    /**
+     * Check table availability (legacy method for backward compatibility)
      */
     public boolean isTableAvailable(String tableNumber, LocalDateTime timeSlot) {
         Optional<Booking> existingBooking = bookingRepository.findActiveBookingForTableAndTime(tableNumber, timeSlot);
